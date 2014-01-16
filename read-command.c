@@ -29,7 +29,7 @@ add_node_to_stream(command_stream_t cStream, char* wordBuf )
 	
 }
 
-void add_token(token_type token, token_value, )
+void add_token(token_type token, token_value,  )
 {
 
 }
@@ -75,4 +75,5 @@ read_command_stream (command_stream_t s)
   /* FIXME: Replace this with your implementation too.  */
   error (1, 0, "command reading not yet implemented");
   return 0;
+
 }

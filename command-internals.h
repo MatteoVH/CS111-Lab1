@@ -31,6 +31,7 @@ struct token
 	char* string;
 	
 };
+
 struct command
 {
   enum command_type type;
