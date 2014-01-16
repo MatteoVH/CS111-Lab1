@@ -20,7 +20,7 @@ struct command_stream
  void *arg;
  
  // A char that will be ignored
- int next_char;
+ int ignore_char;
  // Line count
  int line_number;
  
