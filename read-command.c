@@ -28,11 +28,6 @@ struct command_stream
  // Line count
 	int line_number;
 	
- // For storing the token strings
-	char *next_token_string;
-	enum token_type next_token;
-	char *current_token_string;
-	enum token_type current_token;
  
 };
 
@@ -290,7 +285,6 @@ command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_n
  cStream->current_token_string = checked_malloc ( 50 * sizeof(char) );
  
  // -2 if no char exists, initialized as such 
-	cStream->ignore_char = -2;
 	cStream->line_number = 1;
 
 	do read_next_token(cStream)
