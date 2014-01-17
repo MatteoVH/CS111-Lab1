@@ -22,8 +22,8 @@ struct command_stream
 	void *arg;
 	token* tokenArray;
 	int tokenCount; 
- // A char that will be ignored
-	int ignore_char;
+ 
+	int dontGet; //if set to 1 causes get_next_char to not read the next character immediately
  // Line count
 	int line_number;
 	
@@ -67,151 +67,132 @@ char get_next_char(command_stream_t cStream)
 	return cStream->getbyte(cStream->arg);
 }
 
-// Store the character to mark it to be ignored in the function get_next_char
-void ignoreChar(int targetChar, command_stream_t cStream)
-{
- cStream->ignore_char = targetChar;
-}
-
 void read_next_token(command_stream_t cStream);
 {
  // A while loop that determines the token type the next time produce_token is called
-	int curChar = get_next_char(cStream);
-	int stringIndex = 0;
+	token curToken; //initialize a temporary token
+	int maxTokenStringLength = 15;
+	curToken.wordString = checkedmalloc(sizeof(char)*maxTokenStringLength) //initialize c-string
+	
+	if(cStream->dontGet = 0)
+		int curChar = get_nextChar(cStream);
+	cStream->dontGet = 0; //reset the dontGet boolean
+	int index = 0;
 	while(curChar != EOF && curChar >= 0) // Negative return from get_next_char means no more input
 	{
   
 	// Ignore any leading whitespace
-		else if(curChar == ' ' || curChar == '\t')
+		if(curChar == ' ' || curChar == '\t')
 			continue;
 
 	// Ignore comment text until curChar is a newline
 		else if(curChar == '#')
 		{
 			while((curChar != '\n')
-				curChar = get_next_char; //Ignore until a newline
+				curChar = get_next_char(cStream); //Ignore until a newline
 			continue;
 		}
-   
-   // Form a WORD token from valid WORD characters
-		else if(test_word_char_valid(curChar))
-		{
-			next_token_string[index] = curChar;
-			index++;
-     
-	// Consume all word characters to form the word until a seperator
-			while((curChar = get_next_char(cStream)))
-			{
-       
-       // If the character is no longer one of the valid WORD characters,
-       // return that character, and stop
-				if(!test_word_char_valid(curChar))
-				{
-					ignoreChar(curChar, cStream);
-					break;
-				}
-       
-       // Grow allocated memory when necessary. Size of next_token_string 
-       // and current_token_string are equal because all data in 
-       // next_token_string passes into current_token_string        
-				if(index >= cStream->max_token_length)
-				{
-					command_stream_reallocate(cStream);
-					next_token_string = cStream->next_token_string;
-				}
-       
-       // Add the array forming the next token
-				next_token_string[index] = curChar;
-				index++;
-       
-			}
-
-     // Allocate memory if needed, then add the zero byte
-			if(index >= cStream->max_token_length)
-			{
-				command_stream_reallocate(cStream);
-				next_token_string = cStream->next_token_string;
-			}
-				next_token_string[index] = 0;     
-				cStream->next_token = WORD;
-				break;
-		}
-   
-   // Check for &&
+   		
 		else if(curChar == '&')
 		{
-			next_token_string[index++] = curChar;  
-			if((curChar = get_next_char(cStream)) != '&')
+			curToken.wordString[index] = curChar;
+			index++;
+			curChar = get_next_char(cStream);
+			if(curChar != '&')
 			{
 				error(1, 0, "%d: Found lone &, invalid character", cStream->line_number);
 				break;
 			}
-     
-			next_token_string[index++] = curChar;     
-
+			
+     			curToken.wordString[index] = curChar;
+			index++;     
+			
      //Add the end zero byte
-			next_token_string[index] = 0;     
-			cStream->next_token = D_AND;
+			curToken.wordString[index] = '\0';     
+			curToken.type = AND;
 			break;
    		}
-   
-   // Differentiate between a PIPE (|) and a D_OR (||)
+
+		
    		else if(curChar == '|')
    		{
-			next_token_string[index++] = curChar;  
-			if((curChar = get_next_char(cStream)) == '|')
+			curToken.wordString[index] = curChar;
+			index++;
+			curChar = get_next_char;
+			  
+			if((curChar == '|')
      			{
-       				next_token_string[index++] = curChar;     
-       				next_token_string[index] = 0;
-       				cStream->next_token = D_OR;
+				
+				curToken.wordString[index] = curChar;
+				index++;
+				
+       				     
+       				curToken.wordString[index] = '\0';
+       				curToken.type = OR;
        				break;
      			}
-     			ignoreChar(curChar, cStream);     
-     			next_token_string[index] = 0;     
-     			cStream->next_token = PIPE;
+     			cStream->dontGet = 1;     
+     			curToken.wordString[index] = '\0';     
+     			curToken.type = PIPE;
      			break;
    		}
-   
+	
+		
    		else if(curChar == '(')
    		{
-   			next_token_string[index++] = curChar;
-     			next_token_string[index] = 0;     
-     			cStream->next_token = LEFT_PARAN;
+   			curToken.wordString[index] = curChar;
+			index++;
+     			curToken.wordString[index] = '\0';     
+     			curToken.type = LEFT_PAREN;
      			break;
    		}
-   
+		
+		
    		else if(curChar == ')')
    		{
-    			next_token_string[index++] = curChar;
-     			next_token_string[index] = 0;     
-     			cStream->next_token = RIGHT_PARAN;
+    			curToken.wordString[index] = curChar;
+     			index++; 
+			curToken.wordString[index] = '\0';
+     			curToken.type = RIGHT_PAREN;
      			break;
    		}
-   
+
    		else if(curChar == '<')
    		{
-    			next_token_string[index++] = curChar;
-     			next_token_string[index] = 0;     
-     			cStream->next_token = LESS;
+    			curToken.wordString[index] = curChar;
+     			index++; 
+			curToken.wordString[index] = '\0';
+     			curToken.type = LESS_THAN;
      			break;
    		}
-   
+
    		else if(curChar == '>')
    		{
-     			next_token_string[index++] = curChar;
-     			next_token_string[index] = 0;     
-     			cStream->next_token = GREATER;
+    			curToken.wordString[index] = curChar;
+     			index++; 
+			curToken.wordString[index] = '\0';
+     			curToken.type = GREATER_THAN;
      			break;
    		}
-   
+    
+   		else if(curChar == ';')
+   		{
+    			curToken.wordString[index] = curChar;
+     			index++; 
+			curToken.wordString[index] = '\0';
+     			curToken.type = SEMICOLON;
+     			break;
+   		}
+
    		else if(curChar == '\n')
    		{
     			cStream->line_number++;
-     
+     			curChar = get_next_char(cStream);
      // Ignore any subsequent newlines, but keep line count
-     			while((curChar = get_next_char(cStream)) == '\n')
+     			while((curChar == '\n')
      			{
        				cStream->line_number++;
+				curChar = get_next_char(cStream);
      			}
        
      			if(curChar == EOF)
@@ -219,21 +200,48 @@ void read_next_token(command_stream_t cStream);
        				cStream->next_token = END;
        				break;
      			}
-     			ignoreChar(curChar, cStream);
+     			cStream->dontGet = 1;
      
-     			next_token_string[index++] = ' ';
-     			next_token_string[index] = 0;     
-     			cStream->next_token = NEWLINE;
+     			curToken.wordString[index] = ';';
+			index++;
+     			curToken.wordString[index] = '\0';     
+     			curToken.type = SEMICOLON;
      			break;
    		}
-   
-  	 	else if(curChar == ';')
-   		{
-    			next_token_string[index++] = curChar;
-     			next_token_string[index] = 0;     
-     			cStream->next_token = SEMICOLON;
-     			break;
-   		}
+
+		else if(test_word_char_valid(curChar))
+		{
+			curToken.wordString[index] = curChar;
+			index++;
+     			curChar = get_next_char(cStream);
+	// Consume all word characters to form the word until a seperator
+			while(test_word_char_valid(curChar))
+			{
+       				
+       // If the character is no longer one of the valid WORD characters,
+       
+       
+       // Grow allocated memory when necessary. Size of next_token_string 
+       // and current_token_string are equal because all data in 
+       // next_token_string passes into current_token_string        
+       
+       // Add the array forming the next token
+				curToken.wordString[index] = curChar;
+				index++;
+       				curChar = get_next_char(cStream);
+			
+				if(index >= maxTokenStringLength)
+				{
+					checked_grow_alloc(curToken.wordString, 10);
+				}
+			}
+     // Allocate memory if needed, then add the zero byte
+				cStream->dontGet = 1;
+				
+				curToken.wordString[index] = '\0';     
+				curToken.type = WORD;
+				break;
+		}
    
    		else
    		{
@@ -267,9 +275,11 @@ enum token_type check_next_token(command_stream_t s)
 command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_next_byte_argument)
 {
 	
-
+	
 	command_stream_t cStream = checked_malloc(sizeof(struct command_stream));
 	
+	cStream->dontGet = 0;
+
 	cStream->tokenCount = 10;
 	cStream->tokenArray = checked_malloc(sizeof(token)*(cStream->tokenCount);
 

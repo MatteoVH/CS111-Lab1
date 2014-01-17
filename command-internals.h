@@ -21,7 +21,6 @@ enum token_type
 		LESS_THAN,
 		GREATER_THAN,
 		SEMICOLON,
-		NEWLINE,
 		END
 	};
 // Data associated with a command.
