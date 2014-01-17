@@ -280,9 +280,6 @@ command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_n
 	cStream->getbyte = get_next_byte;
 	cStream->arg = get_next_byte_argument;
 	
- // Allocate inital size for token string arrays
- cStream->next_token_string = checked_malloc ( 50 * sizeof(char) );
- cStream->current_token_string = checked_malloc ( 50 * sizeof(char) );
  
  // -2 if no char exists, initialized as such 
 	cStream->line_number = 1;
