@@ -22,6 +22,7 @@ struct command_stream
 	void *arg;
 	token* tokenArray;
 	int tokenCount; 
+	int maxTokens;
  
 	int dontGet; //if set to 1 causes get_next_char to not read the next character immediately
  // Line count
@@ -67,12 +68,15 @@ char get_next_char(command_stream_t cStream)
 	return cStream->getbyte(cStream->arg);
 }
 
+
 void read_next_token(command_stream_t cStream);
 {
  // A while loop that determines the token type the next time produce_token is called
 	token curToken; //initialize a temporary token
 	int maxTokenStringLength = 15;
 	curToken.wordString = checkedmalloc(sizeof(char)*maxTokenStringLength) //initialize c-string
+	
+	curToken.type = END;
 	
 	if(cStream->dontGet = 0)
 		int curChar = get_nextChar(cStream);
@@ -250,21 +254,13 @@ void read_next_token(command_stream_t cStream);
      			break;
    		}
 	}
+	
+	cStream->tokenArray[tokenCount] = curToken;
+	cStream->tokenCount++;
+	if(cStream->tokenCount == cStream->maxTokens)
+		checked_grow_alloc(tokenArray, sizeof(token)*20);
 }
 
-enum token_type produce_token(command_stream_t cStream)
-{
-char* next_token_string = cStream->next_token_string;
- 
-// Move the next token up to current, then read a new one
-strcpy(cStream->current_token_string, next_token_string);
-cStream->current_token = cStream->next_token;
-next_token_string[0] = 0;
-//read next token before returning current token
-void read_next_token(command_stream_t cStream);
-return cStream->current_token;
-
-}
 
 // Peek at next token without fetching
 enum token_type check_next_token(command_stream_t s)
@@ -279,8 +275,10 @@ command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_n
 	command_stream_t cStream = checked_malloc(sizeof(struct command_stream));
 	
 	cStream->dontGet = 0;
-
-	cStream->tokenCount = 10;
+	
+	
+	cStream->tokenCount = 0;
+	cStream->maxTokens = 20;
 	cStream->tokenArray = checked_malloc(sizeof(token)*(cStream->tokenCount);
 
 	cStream->streamHead = NULL;
