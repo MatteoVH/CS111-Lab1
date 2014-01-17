@@ -306,7 +306,7 @@ command_t read_command_stream (command_stream_t s)
 	
  if(check_next_token(s) == END)
    return NULL;
- read_next_token(s);
+ produce_token(s);
 //parser
 //return parsed result
 }
