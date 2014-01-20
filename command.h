@@ -1,7 +1,19 @@
 // UCLA CS 111 Lab 1 command interface
 
-typedef struct command *command_t;
 typedef struct command_stream *command_stream_t;
+typedef struct command *command_t;
+typedef struct token *token_t;
+
+void parse_token(command_stream_t cStream);
+
+enum token_type get_current_token_type(command_stream_t cStream);
+
+void read_next_token(command_stream_t cStream, char curChar);
+
+void traverse_tree_inorder(command_stream_t cStream, command_t root);
+
+command_t buildTree(command_stream_t cStream, token_t curToken2, int rank);
+
 /* Create a command stream from LABEL, GETBYTE, and ARG.  A reader of
    the command stream will invoke GETBYTE (ARG) to get the next byte.
    GETBYTE will return the next input byte, or a negative number

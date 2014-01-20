@@ -17,58 +17,6 @@
 /* FIXME: Define the type 'struct command_stream' here.  This should
   complete the incomplete type declaration in command.h.  */
 
-void parse_token(command_stream_t cStream);
-
-enum token_type get_current_token_type(command_stream_t cStream);
-
-void read_next_token(command_stream_t cStream, char curChar);
-
-void traverse_tree_inorder(command_stream_t cStream, command_t root);
-
-enum token_type
-{
-        AND,
-        OR,
-        WORD,
-        PIPE,
-        LEFT_PAREN,
-        RIGHT_PAREN,
-        LESS_THAN,
-        GREATER_THAN,
-        SEMICOLON,
-        END
-};
-
-
-
-
-struct token //Need a token because words can have a value
-{
-        enum token_type tType;
-// Data associated with a command.
-	char* wordString;
-};
-
-struct command_stream
-{
-	char curCh;
-	int finalIndex;	
-	int (*getbyte) (void *); 
-	void *arg;
-	struct token* tokenArray;
-	int tokenCount; 
-	int maxTokens;
-	int maxCommands;
-	
-	command_t finalCommandArray;
-	 
-	int dontGet; //if set to 1 causes get_next_char to not read the next character immediately
- // Line count
-	int line_number;
-
-	struct token* arrayOperators;
-	command_t arrayOperands; 
-};
 
 
 command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_next_byte_argument)
@@ -89,14 +37,14 @@ command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_n
 	
  
  	cStream->arrayOperators = checked_malloc(sizeof(struct token)*(cStream->tokenCount));
-	cStream->arrayOperands = checked_malloc(sizeof(command_t)*(cStream->tokenCount));
+	cStream->arrayOperands = checked_malloc(sizeof(struct command)*(cStream->tokenCount));
  // -2 if no char exists, initialized as such 
 	cStream->line_number = 1;
 
 	do read_next_token(cStream, cStream->curCh);
 	while(get_current_token_type(cStream) != END); //insert all tokens into array
 
-	cStream->finalCommandArray = checked_malloc(sizeof(command_t)*cStream->tokenCount);
+	cStream->finalCommandArray = checked_malloc(sizeof(struct command)*cStream->tokenCount);
 	cStream->finalIndex = 0;
 	parse_token(cStream);
 
@@ -136,11 +84,11 @@ char get_next_char(command_stream_t cStream)
 void read_next_token(command_stream_t cStream, char curChar)
 {
  // A while loop that determines the token type the next time produce_token is called
-	struct token curToken; //initialize a temporary token
+	token_t curToken = checked_malloc(sizeof(struct token)); //initialize a temporary token
 	int maxTokenStringLength = 15;
-	curToken.wordString = checked_malloc(sizeof(char)*maxTokenStringLength); //initialize c-string
+	curToken->wordString = checked_malloc(sizeof(char)*maxTokenStringLength); //initialize c-string
 	
-	curToken.tType = END;
+	curToken->tType = END;
 	if(cStream->dontGet == 0)
 		curChar = get_next_char(cStream);
 	cStream->dontGet = 0; //reset the dontGet boolean
@@ -150,7 +98,10 @@ void read_next_token(command_stream_t cStream, char curChar)
   
 	// Ignore any leading whitespace
 		if(curChar == ' ' || curChar == '\t')
+		{	
+			curChar = get_next_char(cStream);
 			continue;
+		}
 
 	// Ignore comment text until curChar is a newline
 		else if(curChar == '#')
@@ -162,7 +113,7 @@ void read_next_token(command_stream_t cStream, char curChar)
    		
 		else if(curChar == '&')
 		{
-			curToken.wordString[index] = curChar;
+			curToken->wordString[index] = curChar;
 			index++;
 			curChar = get_next_char(cStream);
 			if(curChar != '&')
@@ -171,83 +122,83 @@ void read_next_token(command_stream_t cStream, char curChar)
 				break;
 			}
 			
-     			curToken.wordString[index] = curChar;
+     			curToken->wordString[index] = curChar;
 			index++;     
 			
      //Add the end zero byte
-			curToken.wordString[index] = '\0';     
-			curToken.tType = AND;
+			curToken->wordString[index] = '\0';     
+			curToken->tType = AND;
 			break;
    		}
 
 		
    		else if(curChar == '|')
    		{
-			curToken.wordString[index] = curChar;
+			curToken->wordString[index] = curChar;
 			index++;
 			curChar = get_next_char(cStream);
 			  
 			if(curChar == '|')
      			{
 				
-				curToken.wordString[index] = curChar;
+				curToken->wordString[index] = curChar;
 				index++;
 				
        				     
-       				curToken.wordString[index] = '\0';
-       				curToken.tType = OR;
+       				curToken->wordString[index] = '\0';
+       				curToken->tType = OR;
        				break;
      			}
      			cStream->dontGet = 1;     
-     			curToken.wordString[index] = '\0';     
-     			curToken.tType = PIPE;
+     			curToken->wordString[index] = '\0';     
+     			curToken->tType = PIPE;
      			break;
    		}
 	
 		
    		else if(curChar == '(')
    		{
-   			curToken.wordString[index] = curChar;
+   			curToken->wordString[index] = curChar;
 			index++;
-     			curToken.wordString[index] = '\0';     
-     			curToken.tType = LEFT_PAREN;
+     			curToken->wordString[index] = '\0';     
+     			curToken->tType = LEFT_PAREN;
      			break;
    		}
 		
 		
    		else if(curChar == ')')
    		{
-    			curToken.wordString[index] = curChar;
+    			curToken->wordString[index] = curChar;
      			index++; 
-			curToken.wordString[index] = '\0';
-     			curToken.tType = RIGHT_PAREN;
+			curToken->wordString[index] = '\0';
+     			curToken->tType = RIGHT_PAREN;
      			break;
    		}
 
    		else if(curChar == '<')
    		{
-    			curToken.wordString[index] = curChar;
+    			curToken->wordString[index] = curChar;
      			index++; 
-			curToken.wordString[index] = '\0';
-     			curToken.tType = LESS_THAN;
+			curToken->wordString[index] = '\0';
+     			curToken->tType = LESS_THAN;
      			break;
    		}
 
    		else if(curChar == '>')
    		{
-    			curToken.wordString[index] = curChar;
+    			curToken->wordString[index] = curChar;
      			index++; 
-			curToken.wordString[index] = '\0';
-     			curToken.tType = GREATER_THAN;
+			curToken->wordString[index] = '\0';
+     			curToken->tType = GREATER_THAN;
      			break;
    		}
     
    		else if(curChar == ';')
    		{
-    			curToken.wordString[index] = curChar;
+    			curToken->wordString[index] = curChar;
      			index++; 
-			curToken.wordString[index] = '\0';
-     			curToken.tType = SEMICOLON;
+			curToken->wordString[index] = '\0';
+     			curToken->tType = SEMICOLON;
      			break;
    		}
 
@@ -264,21 +215,21 @@ void read_next_token(command_stream_t cStream, char curChar)
        
      			if(curChar == EOF)
      			{
-       				curToken.tType = END;
+       				curToken->tType = END;
 				break;
      			}
      			cStream->dontGet = 1;
      
-     			curToken.wordString[index] = ';';
+     			curToken->wordString[index] = ';';
 			index++;
-     			curToken.wordString[index] = '\0';     
-     			curToken.tType = SEMICOLON;
+     			curToken->wordString[index] = '\0';     
+     			curToken->tType = SEMICOLON;
      			break;
    		}
 
 		else if(test_word_char_valid(curChar))
 		{
-			curToken.wordString[index] = curChar;
+			curToken->wordString[index] = curChar;
 			index++;
      			curChar = get_next_char(cStream);
 	// Take in word characters to form the word until a seperator
@@ -287,21 +238,21 @@ void read_next_token(command_stream_t cStream, char curChar)
        				
       
        // Add the array forming the next token
-				curToken.wordString[index] = curChar;
+				curToken->wordString[index] = curChar;
 				index++;
        				curChar = get_next_char(cStream);
 			
 				if(index >= maxTokenStringLength)
 				{
 					maxTokenStringLength += 10;
-					checked_grow_alloc(curToken.wordString, sizeof(char)*10);
+					checked_realloc(curToken->wordString, sizeof(char)*10);
 				}
 			}
      // Allocate memory if needed, then add the zero byte
 				cStream->dontGet = 1;
 				
-				curToken.wordString[index] = '\0';     
-				curToken.tType = WORD;
+				curToken->wordString[index] = '\0';     
+				curToken->tType = WORD;
 				break;
 		}
    
@@ -313,11 +264,11 @@ void read_next_token(command_stream_t cStream, char curChar)
    		}
 	}
 	
-	cStream->tokenArray[cStream->tokenCount] = curToken;
+	cStream->tokenArray[cStream->tokenCount] = *curToken;
 	cStream->tokenCount++;
 	if(cStream->tokenCount == cStream->maxTokens)
 	{
-		checked_grow_alloc(tokenArray, sizeof(token)*20);
+		checked_realloc(cStream->tokenArray, sizeof(struct token)*20);
 		cStream->maxTokens += 20;
 	}
 	cStream->curCh = curChar;
@@ -334,115 +285,116 @@ void parse_token(command_stream_t cStream)
 	int wordSize = 15;
 	
 	//Distribute tokens into two arrays, one for operands and one for operators
-	while (tokenIndex <= tokenCount-1)
+	while (tokenIndex <= cStream->tokenCount-1)
 	{
-		token curToken = cStream->tokenArray[tokenIndex];
-		if(curToken.tType == WORD)
+		token_t curToken = &(cStream->tokenArray[tokenIndex]);
+		if(curToken->tType == WORD)
 		{
-			command curComm;
-			curComm.type = SIMPLE_COMMAND
-			curComm.status = -1;
-			curComm.input = NULL;
-			curComm.output = NULL;
-			curComm.u.word = checked_malloc(sizeof(char*)*wordSize);
-			curComm.u.word[wordIndex] = curToken.wordString;
+			command_t curComm = checked_malloc(sizeof(struct command));
+			curComm->type = SIMPLE_COMMAND;
+			curComm->status = -1;
+			curComm->input = NULL;
+			curComm->output = NULL;
+			curComm->u.word = checked_malloc(sizeof(char*)*wordSize);
+			curComm->u.word[wordIndex] = curToken->wordString;
 			tokenIndex++;
 			wordIndex++;
 			while(cStream->tokenArray[tokenIndex].tType == WORD)
 			{
-				curComm.u.word[wordIndex] = cStream->tokenArray[tokenIndex].wordString;
+				curComm->u.word[wordIndex] = cStream->tokenArray[tokenIndex].wordString;
 				if(wordIndex >= wordSize)
 				{
-					checked_grow_alloc(curComm.u.word, sizeof(char*)*15)
+					checked_realloc(curComm->u.word, sizeof(char*)*15);
 					wordSize += 15;
 				}
 
 				wordIndex++;
 				tokenIndex++;
 			}
-			cStream->arrayOperands[indexOperand] = curComm;
+			cStream->arrayOperands[indexOperand] = *curComm;
 			indexOperand++;
 		}
 		else
 		{
-			cStream->arrayOperators[indexOperator] = curToken;
+			cStream->arrayOperators[indexOperator] = *curToken;
 			indexOperator++;
 			tokenIndex++;
 		}
 	}
 
-	for (int rank1 = 0; rank1 < 4; rank1++)
+	int rank1; int rank2; int rank3;
+	int x; int y;
+	for (rank1 = 0; rank1 < 4; rank1++)
 	{
-		token curToken2 = cStream->arrayOperators[rank];
-		if(curToken2.tType == LESS_THAN || curToken2.tType == GREATER_THAN)
-		(
-			cStream->arrayOperands[rank] = buildTree(command_stream_t cStream, curToken2, rank);
-			for(int x = rank+1; x < indexOperand-1; x++) // moves everything 2 elements above rank closer to rank by a space
+		token_t curToken1 = &(cStream->arrayOperators[rank1]);
+		if(curToken1->tType == LESS_THAN || curToken1->tType == GREATER_THAN)
+		{
+			cStream->arrayOperands[rank1] = *(buildTree(cStream, curToken1, rank1));
+			for(x = rank1+1; x < indexOperand-1; x++) // moves everything 2 elements above rank closer to rank by a space
 			{
 				cStream->arrayOperands[x] = cStream->arrayOperands[x+1];
 			}
-			for(int x = rank; x < indexOperator-1; x++) // moves everything 2 elements above rank closer to rank by a space
+			for(y = rank1; y < indexOperator-1; y++) // moves everything 2 elements above rank closer to rank by a space
 			{
-				cStream->arrayOperators[x] = cStream->arrayOperators[x+1];
+				cStream->arrayOperators[y] = cStream->arrayOperators[y+1];
 			}
-		)
+		}
 	}
-	for (int rank2 = 0; rank2 < 4; rank2++)
+	for (rank2 = 0; rank2 < 4; rank2++)
 	{
-		if(curToken2.tType == PIPE)
-		(
-			cStream->arrayOperands[rank] = buildTree(command_stream_t cStream, curToken2, rank);
+
+		token_t curToken2 = &(cStream->arrayOperators[rank1]);
+		if(curToken2->tType == PIPE)
+		{
+			cStream->arrayOperands[rank2] = *(buildTree(cStream, curToken2, rank2));
 			
-			for(int x = rank+1; x < indexOperand-1; x++) // moves everything 2 elements above rank closer to rank by a space
+			for(x = rank2+1; x < indexOperand-1; x++) // moves everything 2 elements above rank closer to rank by a space
 			{
 				cStream->arrayOperands[x] = cStream->arrayOperands[x+1];
 			}
-			for(int x = rank; x < indexOperator-1; x++) // moves everything 2 elements above rank closer to rank by a space
+			for(y = rank2; y < indexOperator-1; y++) // moves everything 2 elements above rank closer to rank by a space
 			{
-				cStream->arrayOperators[x] = cStream->arrayOperators[x+1];
+				cStream->arrayOperators[y] = cStream->arrayOperators[y+1];
 			}
-		)
+		}
 	}
-	for (int rank3 = 0; rank3 < 4; rank3++)
+	for (rank3 = 0; rank3 < 4; rank3++)
 	{
-		if(curToken2.tType == AND || curToken2.tType == OR)
-		(
-			cStream->arrayOperands[rank] =buildTree(command_stream_t cStream, curToken2, rank);
-			for(int x = rank+1; x < indexOperand-1; x++) // moves everything 2 elements above rank closer to rank by a space
+
+		token_t curToken3 = &(cStream->arrayOperators[rank1]);
+		if(curToken3->tType == AND || curToken3->tType == OR)
+		{
+			cStream->arrayOperands[rank3] = *(buildTree(cStream, curToken3, rank3));
+			for(x = rank3+1; x < indexOperand-1; x++) // moves everything 2 elements above rank closer to rank by a space
 			{
 				cStream->arrayOperands[x] = cStream->arrayOperands[x+1];
 			}
-			for(int x = rank; x < indexOperator-1; x++) // moves everything 2 elements above rank closer to rank by a space
+			for(y = rank3; y < indexOperator-1; y++) // moves everything 2 elements above rank closer to rank by a space
 			{
-				cStream->arrayOperators[x] = cStream->arrayOperators[x+1];
+				cStream->arrayOperators[y] = cStream->arrayOperators[y+1];
 			}
-		)
+		}
 	}
 	
 	
 }
 
 
-command_t buildTree(command_stream_t cStream, token curToken2, int rank)
+command_t buildTree(command_stream_t cStream, token_t curToken, int rank)
 {
 //empty tree
- 	command top;
-	top.type = curToken2.tType;
-	top.status = -1;
-	top.input = NULL;
-	top.output = NULL;
-	command_t a = cStream->arrayOperands[rank+1]; 
-	command_t b = cStream->arrayOperands[rank];
+ 	command_t top = checked_malloc(sizeof(struct command));
+//translate a token into a command
+	top->type = curToken->tType;
+	top->status = -1;
+	top->input = NULL;
+	top->output = NULL;
+	command_t a = &(cStream->arrayOperands[rank+1]); 
+	command_t b = &(cStream->arrayOperands[rank]);
 	
-	if (curToken2.tType==AND)
-		top.curToken2.tType=AND_COMMAND;
-	if (curToken2.tType==OR)
-		top.curToken2.tType=OR_COMMAND;
-	if (curToken2.tType==PIPE)
-		top.curToken2.tType=PIPE_COMMAND;
-	top.u.command[0]=a;
-	top.u.command[1]=b;	
-	return &top;
+	top->u.command[0]=a;
+	top->u.command[1]=b;	
+	return top;
 	
 }	
 	
@@ -450,7 +402,7 @@ void traverse_tree_inorder(command_stream_t cStream, command_t root)
 {
 	if(root->u.command[0] != NULL)
 		traverse_tree_inorder(cStream, root->u.command[0]);
-	cStream->finalCommandArray[finalIndex] = root;
+	cStream->finalCommandArray[cStream->finalIndex] = *root;
 	cStream->finalIndex++;
 	if(root->u.command[1] != NULL)
 		traverse_tree_inorder(cStream, root->u.command[1]);
@@ -460,7 +412,7 @@ void traverse_tree_inorder(command_stream_t cStream, command_t root)
 
 command_t read_command_stream (command_stream_t s)
 {
-	command_t tempCommand = s->finalCommandArray[finalIndex];
-	finalIndex++;
+	command_t tempCommand = &(s->finalCommandArray[s->finalIndex]);
+	s->finalIndex++;
 	return tempCommand;
 }
