@@ -68,6 +68,7 @@ struct command_stream
 
         token_t arrayOperators;
         command_t arrayOperands;
+	int indexOperand;
 }; 
 
 struct token  //Need a token because words can have a value

@@ -279,7 +279,7 @@ void read_next_token(command_stream_t cStream, char curChar)
 void parse_token(command_stream_t cStream)
 {
 	int indexOperator = 0;
-	int indexOperand = 0;
+	cStream->indexOperand = 0;
 	int tokenIndex = 0;
 	int wordIndex = 0;
 	int wordSize = 15;
@@ -311,8 +311,8 @@ void parse_token(command_stream_t cStream)
 				wordIndex++;
 				tokenIndex++;
 			}
-			cStream->arrayOperands[indexOperand] = *curComm;
-			indexOperand++;
+			cStream->arrayOperands[cStream->indexOperand] = *curComm;
+			cStream->indexOperand++;
 		}
 		else
 		{
@@ -330,7 +330,7 @@ void parse_token(command_stream_t cStream)
 		if(curToken1->tType == LESS_THAN || curToken1->tType == GREATER_THAN)
 		{
 			cStream->arrayOperands[rank1] = *(buildTree(cStream, curToken1, rank1));
-			for(x = rank1+1; x < indexOperand-1; x++) // moves everything 2 elements above rank closer to rank by a space
+			for(x = rank1+1; x < cStream->indexOperand-1; x++) // moves everything 2 elements above rank closer to rank by a space
 			{
 				cStream->arrayOperands[x] = cStream->arrayOperands[x+1];
 			}
@@ -348,7 +348,7 @@ void parse_token(command_stream_t cStream)
 		{
 			cStream->arrayOperands[rank2] = *(buildTree(cStream, curToken2, rank2));
 			
-			for(x = rank2+1; x < indexOperand-1; x++) // moves everything 2 elements above rank closer to rank by a space
+			for(x = rank2+1; x < cStream->indexOperand-1; x++) // moves everything 2 elements above rank closer to rank by a space
 			{
 				cStream->arrayOperands[x] = cStream->arrayOperands[x+1];
 			}
@@ -365,7 +365,7 @@ void parse_token(command_stream_t cStream)
 		if(curToken3->tType == AND || curToken3->tType == OR)
 		{
 			cStream->arrayOperands[rank3] = *(buildTree(cStream, curToken3, rank3));
-			for(x = rank3+1; x < indexOperand-1; x++) // moves everything 2 elements above rank closer to rank by a space
+			for(x = rank3+1; x < cStream->indexOperand; x++) // moves everything 2 elements above rank closer to rank by a space
 			{
 				cStream->arrayOperands[x] = cStream->arrayOperands[x+1];
 			}
@@ -389,9 +389,14 @@ command_t buildTree(command_stream_t cStream, token_t curToken, int rank)
 	top->status = -1;
 	top->input = NULL;
 	top->output = NULL;
-	command_t a = &(cStream->arrayOperands[rank+1]); 
-	command_t b = &(cStream->arrayOperands[rank]);
-	
+	command_t a = NULL;
+	command_t b = NULL;
+	if (rank<(cStream->indexOperand))
+	{	
+		a = &(cStream->arrayOperands[rank+1]); 
+	}
+	if (rank<=(cStream->indexOperand))
+		b = &(cStream->arrayOperands[rank]);
 	top->u.command[0]=a;
 	top->u.command[1]=b;	
 	return top;
