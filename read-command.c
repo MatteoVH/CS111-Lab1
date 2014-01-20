@@ -17,7 +17,13 @@
 /* FIXME: Define the type 'struct command_stream' here.  This should
   complete the incomplete type declaration in command.h.  */
 
+void parse_token(command_stream_t cStream);
 
+enum token_type get_current_token_type(command_stream_t cStream);
+
+void read_next_token(command_stream_t cStream, char curChar);
+
+void traverse_tree_inorder(command_stream_t cStream, command_t root);
 
 enum token_type
 {
@@ -59,7 +65,9 @@ struct command_stream
 	int dontGet; //if set to 1 causes get_next_char to not read the next character immediately
  // Line count
 	int line_number;
-	
+
+	struct token* arrayOperators;
+	command_t arrayOperands; 
 };
 
 
@@ -74,26 +82,25 @@ command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_n
 	cStream->dontGet = 0;
 	cStream->maxTokens = 20;
 	cStream->maxCommands = 20;
-	cStream->tokenArray = checked_malloc(sizeof(token)*(cStream->tokenCount));
+	cStream->tokenArray = checked_malloc(sizeof(struct token)*(cStream->tokenCount));
 
-	cStream->streamHead = NULL;
 	cStream->getbyte = get_next_byte;
 	cStream->arg = get_next_byte_argument;
 	
  
- 	token* arrayOperators = checked_alloc(sizeof(token)*(cStream->tokenCount));
-	command_t arrayOperands = checked_alloc(sizeof(command_t)*(cStream->tokenCount));
+ 	cStream->arrayOperators = checked_malloc(sizeof(struct token)*(cStream->tokenCount));
+	cStream->arrayOperands = checked_malloc(sizeof(command_t)*(cStream->tokenCount));
  // -2 if no char exists, initialized as such 
 	cStream->line_number = 1;
 
-	do read_next_token(cStream, curCh)
+	do read_next_token(cStream, cStream->curCh);
 	while(get_current_token_type(cStream) != END); //insert all tokens into array
 
-	cStream->finalCommandArray = checked_malloc(sizeof(command_t)*tokenCount);
+	cStream->finalCommandArray = checked_malloc(sizeof(command_t)*cStream->tokenCount);
 	cStream->finalIndex = 0;
 	parse_token(cStream);
 
-	traverse_tree(cStream, cStream->arrayOperands[0]);		
+	traverse_tree_inorder(cStream, &(cStream->arrayOperands[0]));		
 	
 	cStream->finalIndex = 0;
 	
@@ -104,7 +111,7 @@ command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_n
 
 enum token_type get_current_token_type(command_stream_t cStream)
 {
-	return (cStream->tokenArray[tokenCount-1]).tType;
+	return (cStream->tokenArray[cStream->tokenCount-1]).tType;
 }
 
 int test_word_char_valid(int curChar)
@@ -129,13 +136,13 @@ char get_next_char(command_stream_t cStream)
 void read_next_token(command_stream_t cStream, char curChar)
 {
  // A while loop that determines the token type the next time produce_token is called
-	token curToken; //initialize a temporary token
+	struct token curToken; //initialize a temporary token
 	int maxTokenStringLength = 15;
 	curToken.wordString = checked_malloc(sizeof(char)*maxTokenStringLength); //initialize c-string
 	
 	curToken.tType = END;
 	if(cStream->dontGet == 0)
-		curChar = get_nextChar(cStream);
+		curChar = get_next_char(cStream);
 	cStream->dontGet = 0; //reset the dontGet boolean
 	int index = 0;
 	while(curChar != EOF && curChar >= 0) // Negative return from get_next_char means no more input
@@ -148,7 +155,7 @@ void read_next_token(command_stream_t cStream, char curChar)
 	// Ignore comment text until curChar is a newline
 		else if(curChar == '#')
 		{
-			while((curChar != '\n')
+			while(curChar != '\n')
 				curChar = get_next_char(cStream); //Ignore until a newline
 			continue;
 		}
@@ -178,9 +185,9 @@ void read_next_token(command_stream_t cStream, char curChar)
    		{
 			curToken.wordString[index] = curChar;
 			index++;
-			curChar = get_next_char;
+			curChar = get_next_char(cStream);
 			  
-			if((curChar == '|')
+			if(curChar == '|')
      			{
 				
 				curToken.wordString[index] = curChar;
@@ -249,7 +256,7 @@ void read_next_token(command_stream_t cStream, char curChar)
     			cStream->line_number++;
      			curChar = get_next_char(cStream);
      // Ignore any subsequent newlines, but keep line count
-     			while((curChar == '\n')
+     			while(curChar == '\n')
      			{
        				cStream->line_number++;
 				curChar = get_next_char(cStream);
@@ -257,8 +264,8 @@ void read_next_token(command_stream_t cStream, char curChar)
        
      			if(curChar == EOF)
      			{
-       				cStream->next_token = END;
-       				break;
+       				curToken.tType = END;
+				break;
      			}
      			cStream->dontGet = 1;
      
@@ -286,7 +293,8 @@ void read_next_token(command_stream_t cStream, char curChar)
 			
 				if(index >= maxTokenStringLength)
 				{
-					checked_grow_alloc(curToken.wordString, 10);
+					maxTokenStringLength += 10;
+					checked_grow_alloc(curToken.wordString, sizeof(char)*10);
 				}
 			}
      // Allocate memory if needed, then add the zero byte
@@ -305,7 +313,7 @@ void read_next_token(command_stream_t cStream, char curChar)
    		}
 	}
 	
-	cStream->tokenArray[tokenCount] = curToken;
+	cStream->tokenArray[cStream->tokenCount] = curToken;
 	cStream->tokenCount++;
 	if(cStream->tokenCount == cStream->maxTokens)
 	{
