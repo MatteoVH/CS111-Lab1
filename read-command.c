@@ -44,14 +44,8 @@ command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_n
 	do read_next_token(cStream, cStream->curCh);
 	while(get_current_token_type(cStream) != END); //insert all tokens into array
 
-	cStream->finalCommandArray = checked_malloc(sizeof(struct command)*cStream->tokenCount);
-	cStream->finalIndex = 0;
 	parse_token(cStream);
 
-	traverse_tree_inorder(cStream, &(cStream->arrayOperands[0]));		
-	
-	cStream->finalIndex = 0;
-	
 	return cStream;
 }
 
@@ -385,7 +379,20 @@ command_t buildTree(command_stream_t cStream, token_t curToken, int rank)
 //empty tree
  	command_t top = checked_malloc(sizeof(struct command));
 //translate a token into a command
-	top->type = curToken->tType;
+// doesn't work: top->type = curToken->tType;
+	switch(curToken->tType)
+	{
+		case AND: top->type = AND; break;
+		case OR: top->type = OR; break;
+		case PIPE: top->type = PIPE; break;
+		case LESS_THAN: top->type = LESS_THAN; break;
+		case GREATER_THAN: top->type = GREATER_THAN; break;
+		case SEMICOLON: top->type = SEMICOLON; break;
+		case END: top->type = END; break;
+		case WORD: top->type = WORD; break;
+		default: error(1, 0, "unknown type");
+
+	}
 	top->status = -1;
 	top->input = NULL;
 	top->output = NULL;
@@ -403,21 +410,8 @@ command_t buildTree(command_stream_t cStream, token_t curToken, int rank)
 	
 }	
 	
-void traverse_tree_inorder(command_stream_t cStream, command_t root)
-{
-	if(root->u.command[0] != NULL)
-		traverse_tree_inorder(cStream, root->u.command[0]);
-	cStream->finalCommandArray[cStream->finalIndex] = *root;
-	cStream->finalIndex++;
-	if(root->u.command[1] != NULL)
-		traverse_tree_inorder(cStream, root->u.command[1]);
-}	
-	
-
 
 command_t read_command_stream (command_stream_t s)
 {
-	command_t tempCommand = &(s->finalCommandArray[s->finalIndex]);
-	s->finalIndex++;
-	return tempCommand;
+	return &(s->arrayOperands[0]);
 }
