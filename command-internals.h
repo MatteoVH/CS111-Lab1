@@ -59,7 +59,7 @@ struct command_stream
         int tokenCount;
         int maxTokens;
         int maxCommands;
-
+	int iterator;
         command_t finalCommandArray;
 
         int dontGet; //if set to 1 causes get_next_char to not read the next character immediately

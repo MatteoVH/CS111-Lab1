@@ -27,21 +27,23 @@ command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_n
 	
 	cStream->curCh = '\0';
 	cStream->tokenCount=0;
-	cStream->dontGet = 0;
+	cStream->dontGet = 1;
 	cStream->maxTokens = 20;
 	cStream->maxCommands = 20;
 	cStream->tokenArray = checked_malloc(sizeof(struct token)*(cStream->tokenCount));
 
 	cStream->getbyte = get_next_byte;
 	cStream->arg = get_next_byte_argument;
-	
+	cStream->iterator = 0;
  
  	cStream->arrayOperators = checked_malloc(sizeof(struct token)*(cStream->tokenCount));
 	cStream->arrayOperands = checked_malloc(sizeof(struct command)*(cStream->tokenCount));
  // -2 if no char exists, initialized as such 
 	cStream->line_number = 1;
 
-	do read_next_token(cStream, cStream->curCh);
+	do {
+	read_next_token(cStream, cStream->curCh);
+	}
 	while(get_current_token_type(cStream) != END); //insert all tokens into array
 
 	parse_token(cStream);
@@ -412,6 +414,11 @@ command_t buildTree(command_stream_t cStream, token_t curToken, int rank)
 	
 
 command_t read_command_stream (command_stream_t s)
-{
-	return &(s->arrayOperands[0]);
+ {
+ if (s->iterator == s->maxCommands)
+  {
+    s->iterator = 0;
+    return NULL;
+  }	
+	return &(s->arrayOperands[s->iterator++]);
 }
