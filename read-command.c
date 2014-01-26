@@ -27,7 +27,7 @@ command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_n
 	
 	cStream->curCh = '\0';
 	cStream->tokenCount=0;
-	cStream->dontGet = 1;
+	cStream->dontGet = 0;
 	cStream->maxTokens = 20;
 	cStream->maxCommands = 20;
 	cStream->tokenArray = checked_malloc(sizeof(struct token)*(cStream->tokenCount));
