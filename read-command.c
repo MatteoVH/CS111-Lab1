@@ -267,7 +267,9 @@ void read_next_token(command_stream_t cStream, char curChar)
 		checked_realloc(cStream->tokenArray, sizeof(struct token)*20);
 		cStream->maxTokens += 20;
 	}
+
 	cStream->curCh = curChar;
+
 }
 
 
@@ -279,9 +281,9 @@ void parse_token(command_stream_t cStream)
 	int tokenIndex = 0;
 	int wordIndex = 0;
 	int wordSize = 15;
-	
+		
 	//Distribute tokens into two arrays, one for operands and one for operators
-	while (tokenIndex <= cStream->tokenCount-1)
+	while (tokenIndex < cStream->tokenCount)
 	{
 		token_t curToken = &(cStream->tokenArray[tokenIndex]);
 		if(curToken->tType == WORD)
@@ -310,16 +312,21 @@ void parse_token(command_stream_t cStream)
 			cStream->arrayOperands[cStream->indexOperand] = *curComm;
 			cStream->indexOperand++;
 		}
-		else
+		else if(curToken->tType != END)
 		{
 			cStream->arrayOperators[indexOperator] = *curToken;
 			indexOperator++;
 			tokenIndex++;
 		}
+			tokenIndex++; //if END
+		
 	}
 
 	int rank1; int rank2; int rank3;
 	int x; int y;
+//dual stack code to replace here
+if (indexOperator > 0)
+{
 	for (rank1 = 0; rank1 < 4; rank1++)
 	{
 		token_t curToken1 = &(cStream->arrayOperators[rank1]);
@@ -339,7 +346,7 @@ void parse_token(command_stream_t cStream)
 	for (rank2 = 0; rank2 < 4; rank2++)
 	{
 
-		token_t curToken2 = &(cStream->arrayOperators[rank1]);
+		token_t curToken2 = &(cStream->arrayOperators[rank2]);
 		if(curToken2->tType == PIPE)
 		{
 			cStream->arrayOperands[rank2] = *(buildTree(cStream, curToken2, rank2));
@@ -357,7 +364,7 @@ void parse_token(command_stream_t cStream)
 	for (rank3 = 0; rank3 < 4; rank3++)
 	{
 
-		token_t curToken3 = &(cStream->arrayOperators[rank1]);
+		token_t curToken3 = &(cStream->arrayOperators[rank3]);
 		if(curToken3->tType == AND || curToken3->tType == OR)
 		{
 			cStream->arrayOperands[rank3] = *(buildTree(cStream, curToken3, rank3));
@@ -372,7 +379,7 @@ void parse_token(command_stream_t cStream)
 		}
 	}
 	
-	
+}	
 }
 
 
@@ -384,14 +391,14 @@ command_t buildTree(command_stream_t cStream, token_t curToken, int rank)
 // doesn't work: top->type = curToken->tType;
 	switch(curToken->tType)
 	{
-		case AND: top->type = AND; break;
-		case OR: top->type = OR; break;
-		case PIPE: top->type = PIPE; break;
-		case LESS_THAN: top->type = LESS_THAN; break;
-		case GREATER_THAN: top->type = GREATER_THAN; break;
-		case SEMICOLON: top->type = SEMICOLON; break;
-		case END: top->type = END; break;
-		case WORD: top->type = WORD; break;
+		case AND: top->type = AND_COMMAND; break;
+		case OR: top->type = OR_COMMAND; break;
+		case PIPE: top->type = PIPE_COMMAND; break;
+		//case LESS_THAN: top->type = LESS_THAN; break;
+		//case GREATER_THAN: top->type = GREATER_THAN; break;
+		case SEMICOLON: top->type = SEQUENCE_COMMAND; break;
+		//case END: top->type = ; break;
+		case WORD: top->type = SIMPLE_COMMAND; break;
 		default: error(1, 0, "unknown type");
 
 	}
@@ -415,7 +422,7 @@ command_t buildTree(command_stream_t cStream, token_t curToken, int rank)
 
 command_t read_command_stream (command_stream_t s)
  {
- if (s->iterator == s->maxCommands)
+ if (s->iterator == s->indexOperand)
   {
     s->iterator = 0;
     return NULL;
