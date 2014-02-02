@@ -51,6 +51,7 @@ struct command
 
 struct command_stream
 {
+	int tokenIndex; //so we can tell which token we are currently reading
         char curCh;
         int finalIndex;
         int (*getbyte) (void *);

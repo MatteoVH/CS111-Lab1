@@ -36,6 +36,8 @@ command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_n
 	cStream->arg = get_next_byte_argument;
 	cStream->iterator = 0;
  
+	cStream->tokenIndex = 0;
+	
  	cStream->arrayOperators = checked_malloc(sizeof(struct token)*(cStream->tokenCount));
 	cStream->arrayOperands = checked_malloc(sizeof(struct command)*(cStream->tokenCount));
  // -2 if no char exists, initialized as such 
@@ -272,10 +274,32 @@ void read_next_token(command_stream_t cStream, char curChar)
 
 }
 
+void parse_andor(command_stream_t cStream)
+{
+	command_t leftCommand = parse_pipe(cStream);
+
+}
+
+void parse_pipe(command_stream_t cStream)
+{
+	command_t leftCommand = parse_redirection(cStream);
+
+}
+
+void parse_redirection(command_stream_t cStream)
+{
+	while(	
+
+}
+
 
 //parse the token array with a dual operator/operand algorithm
 void parse_token(command_stream_t cStream)
 {
+
+	parse_andor(cStream);
+
+/*
 	int indexOperator = 0;
 	cStream->indexOperand = 0;
 	int tokenIndex = 0;
@@ -379,7 +403,7 @@ if (indexOperator > 0)
 		}
 	}
 	
-}	
+}	*/
 }
 
 

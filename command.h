@@ -4,15 +4,25 @@ typedef struct command_stream *command_stream_t;
 typedef struct command *command_t;
 typedef struct token *token_t;
 
-void parse_token(command_stream_t cStream);
+token_t read_next_token(command_stream_t);
 
-enum token_type get_current_token_type(command_stream_t cStream);
+token_t check_next_token(command_stream_t);
 
-void read_next_token(command_stream_t cStream, char curChar);
+void parse_andor(command_stream_t);
 
-void traverse_tree_inorder(command_stream_t cStream, command_t root);
+void parse_pipe(command_stream_t);
 
-command_t buildTree(command_stream_t cStream, token_t curToken2, int rank);
+void parse_redirection(command_stream_t);
+
+void parse_token(command_stream_t);
+
+enum token_type get_current_token_type(command_stream_t);
+
+void read_next_token(command_stream_t, char);
+
+void traverse_tree_inorder(command_stream_t, command_t);
+
+command_t buildTree(command_stream_t, token_t, int rank);
 
 /* Create a command stream from LABEL, GETBYTE, and ARG.  A reader of
    the command stream will invoke GETBYTE (ARG) to get the next byte.
