@@ -30,7 +30,7 @@ command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_n
 	cStream->dontGet = 0;
 	cStream->maxTokens = 20;
 	cStream->maxCommands = 20;
-	cStream->tokenArray = checked_malloc(sizeof(struct token)*(cStream->tokenCount));
+	cStream->tokenArray = checked_malloc(sizeof(struct token)*(cStream->maxTokens));
 
 	cStream->getbyte = get_next_byte;
 	cStream->arg = get_next_byte_argument;
@@ -38,8 +38,8 @@ command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_n
  
 	cStream->tokenIndex = 0;
 	
- 	cStream->arrayOperators = checked_malloc(sizeof(struct token)*(cStream->tokenCount));
-	cStream->arrayOperands = checked_malloc(sizeof(struct command)*(cStream->tokenCount));
+	cStream->arrayCommands = checked_malloc(sizeof(struct command)*(cStream->tokenCount));
+	cStream->arrayCommandsIndex = 0;
  // -2 if no char exists, initialized as such 
 	cStream->line_number = 1;
 
@@ -48,8 +48,18 @@ command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_n
 	}
 	while(get_current_token_type(cStream) != END); //insert all tokens into array
 
-	parse_token(cStream);
+	create_command_array(cStream);
+	
+	//Initialize the linear command array with memory and also set the counter to 0
+	cStream->linearCommandArray = checked_malloc(sizeof(struct command)*(cStream->arrayCommandsIndex));
+	cStream->linearCounter = 0;
 
+	//Parse the tree using a recursive in-order traversal to generate a linear array of the commands so we can return them in read_command_stream
+	parse_into_linear_array(cStream, &(cStream->arrayCommands[0]));	
+
+	//initialize the output counter so that the read_command_stream function can use it
+	cStream->outputCounter = 0;
+	
 	return cStream;
 }
 
@@ -274,30 +284,71 @@ void read_next_token(command_stream_t cStream, char curChar)
 
 }
 
-void parse_andor(command_stream_t cStream)
+void create_command_array(command_stream_t cStream)
 {
-	command_t leftCommand = parse_pipe(cStream);
-
+	int tokenIterator = 0;
+	while(cStream->tokenArray[tokenIterator].tType != END)
+	{
+		cStream->arrayCommands[cStream->arrayCommandsIndex].status = -1;
+		cStream->arrayCommands[cStream->arrayCommandsIndex].input = NULL;
+		cStream->arrayCommands[cStream->arrayCommandsIndex].output = NULL;
+		cStream->arrayCommands[cStream->arrayCommandsIndex].u.command[0] = NULL;
+		cStream->arrayCommands[cStream->arrayCommandsIndex].u.command[1] = NULL;
+		switch(cStream->tokenArray[tokenIterator].tType)
+		{		
+			case AND:
+				cStream->arrayCommands[cStream->arrayCommandsIndex].type = AND_COMMAND;
+				break;
+			case OR:
+				cStream->arrayCommands[cStream->arrayCommandsIndex].type = OR_COMMAND;
+				break;
+			case WORD:
+				cStream->arrayCommands[cStream->arrayCommandsIndex].type = SIMPLE_COMMAND;
+				cStream->arrayCommands[cStream->arrayCommandsIndex].u.word = checked_malloc(sizeof(char*)*15);
+				int optionIterator = 0;
+				
+				while(cStream->tokenArray[tokenIterator].tType == WORD)	
+				{
+					cStream->arrayCommands[cStream->arrayCommandsIndex].u.word[optionIterator] = cStream->tokenArray[tokenIterator].wordString;
+					optionIterator++;
+					tokenIterator++;
+				}
+				tokenIterator--;
+				cStream->arrayCommandsIndex++;
+				break;
+			case PIPE:
+			case LESS_THAN:
+			case GREATER_THAN:
+			case SEMICOLON:
+			case LEFT_PAREN:
+			default:
+				cStream->arrayCommandsIndex++;
+		}	
+		tokenIterator++;	
+	}
 }
+
+/*void parse_andor(command_stream_t cStream)
+{
+	
+}
+
 
 void parse_pipe(command_stream_t cStream)
 {
-	command_t leftCommand = parse_redirection(cStream);
 
 }
 
 void parse_redirection(command_stream_t cStream)
 {
-	while(	
 
-}
+}*/
 
 
 //parse the token array with a dual operator/operand algorithm
 void parse_token(command_stream_t cStream)
 {
-
-	parse_andor(cStream);
+	create_command_array(cStream);
 
 /*
 	int indexOperator = 0;
@@ -406,7 +457,7 @@ if (indexOperator > 0)
 }	*/
 }
 
-
+/*
 command_t buildTree(command_stream_t cStream, token_t curToken, int rank)
 {
 //empty tree
@@ -432,24 +483,43 @@ command_t buildTree(command_stream_t cStream, token_t curToken, int rank)
 	command_t a = NULL;
 	command_t b = NULL;
 	if (rank<(cStream->indexOperand))
-	{	
-		a = &(cStream->arrayOperands[rank+1]); 
+	{
+		;	
 	}
 	if (rank<=(cStream->indexOperand))
-		b = &(cStream->arrayOperands[rank]);
+		;
 	top->u.command[0]=a;
 	top->u.command[1]=b;	
 	return top;
 	
 }	
+*/	
+
+void parse_into_linear_array(command_stream_t cStream, command_t com)
+{
+	//traverse the left side of the current node
+	if(com->u.command[0] != NULL && com->type != SUBSHELL_COMMAND && com->type != SIMPLE_COMMAND)
+		parse_into_linear_array(cStream, &(*(com->u.command[0])));
+
+	//insert current command and increment counter
+	cStream->linearCommandArray[cStream->linearCounter] = *com;
+	cStream->linearCounter++;
 	
+	//traverse the right side of the current node
+	if(com->u.command[1] != NULL && com->type != SUBSHELL_COMMAND && com->type != SIMPLE_COMMAND)
+		parse_into_linear_array(cStream, &(*(com->u.command[1])));
+	
+}
 
 command_t read_command_stream (command_stream_t s)
- {
- if (s->iterator == s->indexOperand)
-  {
-    s->iterator = 0;
-    return NULL;
-  }	
-	return &(s->arrayOperands[s->iterator++]);
+{	
+	//if we are not at the end of the array
+	if(s->outputCounter != s->linearCounter)
+	{
+		command_t readCommand = &(s->linearCommandArray[s->outputCounter]);
+		s->outputCounter++;
+		return readCommand;	
+	}
+	else	//otherwise there are no commands left to return, so just return NULL
+		return NULL;
 }

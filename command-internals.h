@@ -61,15 +61,19 @@ struct command_stream
         int maxTokens;
         int maxCommands;
 	int iterator;
-        command_t finalCommandArray;
 
         int dontGet; //if set to 1 causes get_next_char to not read the next character immediately
  // Line count
         int line_number;
 
-        token_t arrayOperators;
-        command_t arrayOperands;
-	int indexOperand;
+        command_t arrayCommands;
+	int arrayCommandsIndex;
+
+	command_t linearCommandArray;
+	int linearCounter;
+	
+	//this int is to keep track of what command the read_command_stream function is at
+	int outputCounter;
 }; 
 
 struct token  //Need a token because words can have a value

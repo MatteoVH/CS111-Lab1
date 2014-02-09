@@ -1,1 +1,2 @@
-echo hello && echo peepee
+./timetrash ls
+./timetrash ls -l
