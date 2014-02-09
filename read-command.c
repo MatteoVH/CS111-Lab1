@@ -40,6 +40,17 @@ command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_n
 	
 	cStream->arrayCommands = checked_malloc(sizeof(struct command)*(cStream->tokenCount));
 	cStream->arrayCommandsIndex = 0;
+	int temp;
+	for(temp = 0; temp != cStream->tokenCount; temp++)
+	{
+		cStream->arrayCommands[temp].status = -1;
+		cStream->arrayCommands[temp].input = NULL;
+		cStream->arrayCommands[temp].output = NULL;
+		cStream->arrayCommands[temp].u.command[0] = NULL;
+		cStream->arrayCommands[temp].u.command[1] = NULL;
+	}	
+
+
  // -2 if no char exists, initialized as such 
 	cStream->line_number = 1;
 
@@ -277,6 +288,7 @@ void read_next_token(command_stream_t cStream, char curChar)
 	if(cStream->tokenCount == cStream->maxTokens)
 	{
 		checked_realloc(cStream->tokenArray, sizeof(struct token)*20);
+			iefault:
 		cStream->maxTokens += 20;
 	}
 
@@ -289,18 +301,20 @@ void create_command_array(command_stream_t cStream)
 	int tokenIterator = 0;
 	while(cStream->tokenArray[tokenIterator].tType != END)
 	{
-		cStream->arrayCommands[cStream->arrayCommandsIndex].status = -1;
-		cStream->arrayCommands[cStream->arrayCommandsIndex].input = NULL;
-		cStream->arrayCommands[cStream->arrayCommandsIndex].output = NULL;
-		cStream->arrayCommands[cStream->arrayCommandsIndex].u.command[0] = NULL;
-		cStream->arrayCommands[cStream->arrayCommandsIndex].u.command[1] = NULL;
+		
+		//declared in case of redirection
+		int tempTokenIterator;
+		int temp;
+
 		switch(cStream->tokenArray[tokenIterator].tType)
 		{		
 			case AND:
 				cStream->arrayCommands[cStream->arrayCommandsIndex].type = AND_COMMAND;
+				cStream->arrayCommandsIndex++;
 				break;
 			case OR:
 				cStream->arrayCommands[cStream->arrayCommandsIndex].type = OR_COMMAND;
+				cStream->arrayCommandsIndex++;
 				break;
 			case WORD:
 				cStream->arrayCommands[cStream->arrayCommandsIndex].type = SIMPLE_COMMAND;
@@ -317,12 +331,45 @@ void create_command_array(command_stream_t cStream)
 				cStream->arrayCommandsIndex++;
 				break;
 			case PIPE:
-			case LESS_THAN:
-			case GREATER_THAN:
-			case SEMICOLON:
-			case LEFT_PAREN:
-			default:
+				cStream->arrayCommands[cStream->arrayCommandsIndex].type = PIPE_COMMAND;
 				cStream->arrayCommandsIndex++;
+				break;
+			case LESS_THAN:
+				//set the input of the previous command
+				cStream->arrayCommands[cStream->arrayCommandsIndex - 1].input = cStream->tokenArray[tokenIterator + 1].wordString;
+				//move the array elements to the left 2 to remove the less_than sign and its argument
+				for(temp = 0; temp < 2; temp++)
+				{
+					for(tempTokenIterator = tokenIterator; tempTokenIterator < cStream->tokenCount-1; tempTokenIterator++)
+					{
+						cStream->tokenArray[tempTokenIterator] = cStream->tokenArray[tempTokenIterator+1];
+						
+					}
+				}
+				tokenIterator--;
+				break;
+			case GREATER_THAN:
+				//set the output of the previous command
+				cStream->arrayCommands[cStream->arrayCommandsIndex - 1].output = cStream->tokenArray[tokenIterator + 1].wordString;
+				//move the array elements to the left 2 to remove the greater_than sign and its argument
+				for(temp = 0; temp < 2; temp++)
+				{
+					for(tempTokenIterator = tokenIterator; tempTokenIterator < cStream->tokenCount-1; tempTokenIterator++)
+					{
+						cStream->tokenArray[tempTokenIterator] = cStream->tokenArray[tempTokenIterator+1];
+						
+					}
+				}
+				tokenIterator--;
+				break;
+			case SEMICOLON:
+				cStream->arrayCommands[cStream->arrayCommandsIndex].type = SEQUENCE_COMMAND;
+				cStream->arrayCommandsIndex++;
+				break;
+			case LEFT_PAREN:
+				break;
+			default: 
+				break;
 		}	
 		tokenIterator++;	
 	}

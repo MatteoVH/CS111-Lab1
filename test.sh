@@ -1,2 +1,1 @@
-./timetrash ls
-./timetrash ls -l
+a < b > c
