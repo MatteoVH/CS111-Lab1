@@ -69,6 +69,9 @@ struct command_stream
         command_t arrayCommands;
 	int arrayCommandsIndex;
 
+	command_t newHome;
+	int newHomeIterator;
+
 	command_t linearCommandArray;
 	int linearCounter;
 	

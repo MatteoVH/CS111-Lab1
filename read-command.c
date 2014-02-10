@@ -26,10 +26,9 @@ command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_n
 	command_stream_t cStream = checked_malloc(sizeof(struct command_stream));
 	
 	cStream->curCh = '\0';
-	cStream->tokenCount=0;
+	cStream->tokenCount = 0;
 	cStream->dontGet = 0;
 	cStream->maxTokens = 20;
-	cStream->maxCommands = 20;
 	cStream->tokenArray = checked_malloc(sizeof(struct token)*(cStream->maxTokens));
 
 	cStream->getbyte = get_next_byte;
@@ -38,17 +37,6 @@ command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_n
  
 	cStream->tokenIndex = 0;
 	
-	cStream->arrayCommands = checked_malloc(sizeof(struct command)*(cStream->tokenCount));
-	cStream->arrayCommandsIndex = 0;
-	int temp;
-	for(temp = 0; temp != cStream->tokenCount; temp++)
-	{
-		cStream->arrayCommands[temp].status = -1;
-		cStream->arrayCommands[temp].input = NULL;
-		cStream->arrayCommands[temp].output = NULL;
-		cStream->arrayCommands[temp].u.command[0] = NULL;
-		cStream->arrayCommands[temp].u.command[1] = NULL;
-	}	
 
 
  // -2 if no char exists, initialized as such 
@@ -58,9 +46,31 @@ command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_n
 	read_next_token(cStream, cStream->curCh);
 	}
 	while(get_current_token_type(cStream) != END); //insert all tokens into array
-
-	create_command_array(cStream);
 	
+	cStream->arrayCommands = checked_malloc(sizeof(struct command)*(cStream->tokenCount));
+	cStream->arrayCommandsIndex = 0;
+	
+	int temp;
+	for(temp = 0; temp != cStream->tokenCount; temp++)
+	{
+		cStream->arrayCommands[temp].status = -1;
+		cStream->arrayCommands[temp].input = NULL;
+		cStream->arrayCommands[temp].output = NULL;
+		cStream->arrayCommands[temp].u.command[0] = NULL;
+		cStream->arrayCommands[temp].u.command[1] = NULL;
+	}	
+	//puts the tokens into actual command structs, and also parses redirections as well
+	create_command_array(cStream);
+
+	cStream->newHomeIterator = 0;
+	cStream->newHome = checked_malloc(sizeof(struct command)*(cStream->arrayCommandsIndex)*2);
+
+	//parses all pipe commands
+	parse_pipe(cStream);
+
+	//parses all AND or OR commands
+	parse_andor(cStream);
+		
 	//Initialize the linear command array with memory and also set the counter to 0
 	cStream->linearCommandArray = checked_malloc(sizeof(struct command)*(cStream->arrayCommandsIndex));
 	cStream->linearCounter = 0;
@@ -287,9 +297,8 @@ void read_next_token(command_stream_t cStream, char curChar)
 	cStream->tokenCount++;
 	if(cStream->tokenCount == cStream->maxTokens)
 	{
-		checked_realloc(cStream->tokenArray, sizeof(struct token)*20);
-			iefault:
 		cStream->maxTokens += 20;
+		checked_realloc(cStream->tokenArray, sizeof(struct token)*(cStream->maxTokens));
 	}
 
 	cStream->curCh = curChar;
@@ -375,172 +384,82 @@ void create_command_array(command_stream_t cStream)
 	}
 }
 
-/*void parse_andor(command_stream_t cStream)
+void parse_andor(command_stream_t cStream)
 {
+	
+	int commandIterator;
+	int deletionIterator;
+	for(commandIterator = 0; commandIterator != cStream->arrayCommandsIndex; commandIterator++)
+	{
+		if((cStream->arrayCommands[commandIterator].type == AND_COMMAND || cStream->arrayCommands[commandIterator].type == OR_COMMAND))
+		{
+			//put them into a new home so they are not overwritten
+			cStream->newHome[cStream->newHomeIterator] = cStream->arrayCommands[commandIterator - 1];
+			cStream->newHomeIterator++;
+			cStream->newHome[cStream->newHomeIterator] = cStream->arrayCommands[commandIterator + 1];
+			cStream->newHomeIterator++;			
+
+			//set the command array to the previous and next command; thus creating the node
+			cStream->arrayCommands[commandIterator].u.command[0] = &cStream->newHome[cStream->newHomeIterator - 2];
+			cStream->arrayCommands[commandIterator].u.command[1] = &cStream->newHome[cStream->newHomeIterator - 1];
+			
+			//delete the now useless nodes
+			
+			//first the node before the pipe
+			for(deletionIterator = commandIterator - 1; deletionIterator < cStream->arrayCommandsIndex - 1; deletionIterator++)
+				cStream->arrayCommands[deletionIterator] = cStream->arrayCommands[deletionIterator + 1];
+			//remove the last redundant element
+			cStream->arrayCommandsIndex--;
+			//delete the now redundant command after pipe
+			for(deletionIterator = commandIterator; deletionIterator < cStream->arrayCommandsIndex - 1; deletionIterator++)
+				cStream->arrayCommands[deletionIterator] = cStream->arrayCommands[deletionIterator + 1];
+			//remove the last redundant element again
+			cStream->arrayCommandsIndex--;
+		
+			commandIterator--;	
+		}
+	}
+	
 	
 }
 
 
 void parse_pipe(command_stream_t cStream)
 {
-
-}
-
-void parse_redirection(command_stream_t cStream)
-{
-
-}*/
-
-
-//parse the token array with a dual operator/operand algorithm
-void parse_token(command_stream_t cStream)
-{
-	create_command_array(cStream);
-
-/*
-	int indexOperator = 0;
-	cStream->indexOperand = 0;
-	int tokenIndex = 0;
-	int wordIndex = 0;
-	int wordSize = 15;
-		
-	//Distribute tokens into two arrays, one for operands and one for operators
-	while (tokenIndex < cStream->tokenCount)
+	int commandIterator;
+	int deletionIterator;
+	for(commandIterator = 0; commandIterator != cStream->arrayCommandsIndex; commandIterator++)
 	{
-		token_t curToken = &(cStream->tokenArray[tokenIndex]);
-		if(curToken->tType == WORD)
+		if(cStream->arrayCommands[commandIterator].type == PIPE_COMMAND)
 		{
-			command_t curComm = checked_malloc(sizeof(struct command));
-			curComm->type = SIMPLE_COMMAND;
-			curComm->status = -1;
-			curComm->input = NULL;
-			curComm->output = NULL;
-			curComm->u.word = checked_malloc(sizeof(char*)*wordSize);
-			curComm->u.word[wordIndex] = curToken->wordString;
-			tokenIndex++;
-			wordIndex++;
-			while(cStream->tokenArray[tokenIndex].tType == WORD)
-			{
-				curComm->u.word[wordIndex] = cStream->tokenArray[tokenIndex].wordString;
-				if(wordIndex >= wordSize)
-				{
-					checked_realloc(curComm->u.word, sizeof(char*)*15);
-					wordSize += 15;
-				}
+			//put them into a new home so they are not overwritten
+			cStream->newHome[cStream->newHomeIterator] = cStream->arrayCommands[commandIterator - 1];
+			cStream->newHomeIterator++;
+			cStream->newHome[cStream->newHomeIterator] = cStream->arrayCommands[commandIterator + 1];
+			cStream->newHomeIterator++;			
 
-				wordIndex++;
-				tokenIndex++;
-			}
-			cStream->arrayOperands[cStream->indexOperand] = *curComm;
-			cStream->indexOperand++;
-		}
-		else if(curToken->tType != END)
-		{
-			cStream->arrayOperators[indexOperator] = *curToken;
-			indexOperator++;
-			tokenIndex++;
-		}
-			tokenIndex++; //if END
-		
-	}
-
-	int rank1; int rank2; int rank3;
-	int x; int y;
-//dual stack code to replace here
-if (indexOperator > 0)
-{
-	for (rank1 = 0; rank1 < 4; rank1++)
-	{
-		token_t curToken1 = &(cStream->arrayOperators[rank1]);
-		if(curToken1->tType == LESS_THAN || curToken1->tType == GREATER_THAN)
-		{
-			cStream->arrayOperands[rank1] = *(buildTree(cStream, curToken1, rank1));
-			for(x = rank1+1; x < cStream->indexOperand-1; x++) // moves everything 2 elements above rank closer to rank by a space
-			{
-				cStream->arrayOperands[x] = cStream->arrayOperands[x+1];
-			}
-			for(y = rank1; y < indexOperator-1; y++) // moves everything 2 elements above rank closer to rank by a space
-			{
-				cStream->arrayOperators[y] = cStream->arrayOperators[y+1];
-			}
-		}
-	}
-	for (rank2 = 0; rank2 < 4; rank2++)
-	{
-
-		token_t curToken2 = &(cStream->arrayOperators[rank2]);
-		if(curToken2->tType == PIPE)
-		{
-			cStream->arrayOperands[rank2] = *(buildTree(cStream, curToken2, rank2));
+			//set the command array to the previous and next command; thus creating the node
+			cStream->arrayCommands[commandIterator].u.command[0] = &cStream->newHome[cStream->newHomeIterator - 2];
+			cStream->arrayCommands[commandIterator].u.command[1] = &cStream->newHome[cStream->newHomeIterator - 1];
 			
-			for(x = rank2+1; x < cStream->indexOperand-1; x++) // moves everything 2 elements above rank closer to rank by a space
-			{
-				cStream->arrayOperands[x] = cStream->arrayOperands[x+1];
-			}
-			for(y = rank2; y < indexOperator-1; y++) // moves everything 2 elements above rank closer to rank by a space
-			{
-				cStream->arrayOperators[y] = cStream->arrayOperators[y+1];
-			}
+			//delete the now useless nodes
+			
+			//first the node before the pipe
+			for(deletionIterator = commandIterator - 1; deletionIterator < cStream->arrayCommandsIndex - 1; deletionIterator++)
+				cStream->arrayCommands[deletionIterator] = cStream->arrayCommands[deletionIterator + 1];
+			//remove the last redundant element
+			cStream->arrayCommandsIndex--;
+			//delete the now redundant command after pipe
+			for(deletionIterator = commandIterator; deletionIterator < cStream->arrayCommandsIndex - 1; deletionIterator++)
+				cStream->arrayCommands[deletionIterator] = cStream->arrayCommands[deletionIterator + 1];
+			//remove the last redundant element again
+			cStream->arrayCommandsIndex--;
+		
+			commandIterator--;	
 		}
 	}
-	for (rank3 = 0; rank3 < 4; rank3++)
-	{
-
-		token_t curToken3 = &(cStream->arrayOperators[rank3]);
-		if(curToken3->tType == AND || curToken3->tType == OR)
-		{
-			cStream->arrayOperands[rank3] = *(buildTree(cStream, curToken3, rank3));
-			for(x = rank3+1; x < cStream->indexOperand; x++) // moves everything 2 elements above rank closer to rank by a space
-			{
-				cStream->arrayOperands[x] = cStream->arrayOperands[x+1];
-			}
-			for(y = rank3; y < indexOperator-1; y++) // moves everything 2 elements above rank closer to rank by a space
-			{
-				cStream->arrayOperators[y] = cStream->arrayOperators[y+1];
-			}
-		}
-	}
-	
-}	*/
 }
 
-/*
-command_t buildTree(command_stream_t cStream, token_t curToken, int rank)
-{
-//empty tree
- 	command_t top = checked_malloc(sizeof(struct command));
-//translate a token into a command
-// doesn't work: top->type = curToken->tType;
-	switch(curToken->tType)
-	{
-		case AND: top->type = AND_COMMAND; break;
-		case OR: top->type = OR_COMMAND; break;
-		case PIPE: top->type = PIPE_COMMAND; break;
-		//case LESS_THAN: top->type = LESS_THAN; break;
-		//case GREATER_THAN: top->type = GREATER_THAN; break;
-		case SEMICOLON: top->type = SEQUENCE_COMMAND; break;
-		//case END: top->type = ; break;
-		case WORD: top->type = SIMPLE_COMMAND; break;
-		default: error(1, 0, "unknown type");
-
-	}
-	top->status = -1;
-	top->input = NULL;
-	top->output = NULL;
-	command_t a = NULL;
-	command_t b = NULL;
-	if (rank<(cStream->indexOperand))
-	{
-		;	
-	}
-	if (rank<=(cStream->indexOperand))
-		;
-	top->u.command[0]=a;
-	top->u.command[1]=b;	
-	return top;
-	
-}	
-*/	
 
 void parse_into_linear_array(command_stream_t cStream, command_t com)
 {
@@ -555,18 +474,16 @@ void parse_into_linear_array(command_stream_t cStream, command_t com)
 	//traverse the right side of the current node
 	if(com->u.command[1] != NULL && com->type != SUBSHELL_COMMAND && com->type != SIMPLE_COMMAND)
 		parse_into_linear_array(cStream, &(*(com->u.command[1])));
-	
 }
 
 command_t read_command_stream (command_stream_t s)
-{	
-	//if we are not at the end of the array
-	if(s->outputCounter != s->linearCounter)
+{
+	if(s->outputCounter != s->arrayCommandsIndex)
 	{
-		command_t readCommand = &(s->linearCommandArray[s->outputCounter]);
+		command_t readCommand = &(s->arrayCommands[s->outputCounter]);
 		s->outputCounter++;
 		return readCommand;	
 	}
-	else	//otherwise there are no commands left to return, so just return NULL
+	else
 		return NULL;
 }
