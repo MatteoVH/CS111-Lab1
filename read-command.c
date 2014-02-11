@@ -241,10 +241,11 @@ void read_next_token(command_stream_t cStream, char curChar)
    		{
     			cStream->line_number++;
      			curChar = get_next_char(cStream);
-     // Ignore any subsequent newlines, but keep line count
-     			while(curChar == '\n')
+     // Ignore any subsequent whitespace, but keep line count
+     			while(curChar == '\n' || curChar == '\t' || curChar == ' ')
      			{
-       				cStream->line_number++;
+				if(curChar == '\n')
+       					cStream->line_number++;
 				curChar = get_next_char(cStream);
      			}
        
@@ -284,8 +285,8 @@ void read_next_token(command_stream_t cStream, char curChar)
 			
 				if(index >= maxTokenStringLength)
 				{
-					maxTokenStringLength += 10;
-					checked_realloc(curToken->wordString, sizeof(char)*10);
+					maxTokenStringLength += 30;
+					curToken->wordString = checked_realloc(curToken->wordString, sizeof(char)*maxTokenStringLength);
 				}
 			}
      // Allocate memory if needed, then add the zero byte
@@ -306,10 +307,10 @@ void read_next_token(command_stream_t cStream, char curChar)
 	
 	cStream->tokenArray[cStream->tokenCount] = *curToken;
 	cStream->tokenCount++;
-	if(cStream->tokenCount == cStream->maxTokens)
+	if(cStream->tokenCount >= cStream->maxTokens)
 	{
-		cStream->maxTokens += 20;
-		checked_realloc(cStream->tokenArray, sizeof(struct token)*(cStream->maxTokens));
+		cStream->maxTokens += 40;
+		cStream->tokenArray = checked_realloc(cStream->tokenArray, sizeof(struct token)*(cStream->maxTokens));
 	}
 
 	cStream->curCh = curChar;
