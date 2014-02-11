@@ -70,6 +70,12 @@ command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_n
 
 	//parses all AND or OR commands
 	parse_andor(cStream);
+
+	//parses all SEMICOLON commands
+	parse_serialcommand(cStream);
+
+	//parse NEWLINE spacers
+	parse_spacers(cStream);
 		
 	//Initialize the linear command array with memory and also set the counter to 0
 	cStream->linearCommandArray = checked_malloc(sizeof(struct command)*(cStream->arrayCommandsIndex));
@@ -248,12 +254,17 @@ void read_next_token(command_stream_t cStream, char curChar)
 				break;
      			}
      			cStream->dontGet = 1;
-     
-     			curToken->wordString[index] = ';';
-			index++;
-     			curToken->wordString[index] = '\0';     
-     			curToken->tType = SEMICOLON;
-     			break;
+     			if(cStream->tokenArray[cStream->tokenCount - 1].tType != AND && cStream->tokenArray[cStream->tokenCount - 1].tType != OR &&
+			   cStream->tokenArray[cStream->tokenCount - 1].tType != PIPE && cStream->tokenArray[cStream->tokenCount -1].tType != SEMICOLON)
+			{	
+     				curToken->wordString[index] = '\n';
+				index++;
+     				curToken->wordString[index] = '\0';     
+     				curToken->tType = NEWLINE;
+     			}	
+			else continue;
+			break;
+			
    		}
 
 		else if(test_word_char_valid(curChar))
@@ -346,6 +357,7 @@ void create_command_array(command_stream_t cStream)
 			case LESS_THAN:
 				//set the input of the previous command
 				cStream->arrayCommands[cStream->arrayCommandsIndex - 1].input = cStream->tokenArray[tokenIterator + 1].wordString;
+				
 				//move the array elements to the left 2 to remove the less_than sign and its argument
 				for(temp = 0; temp < 2; temp++)
 				{
@@ -360,6 +372,7 @@ void create_command_array(command_stream_t cStream)
 			case GREATER_THAN:
 				//set the output of the previous command
 				cStream->arrayCommands[cStream->arrayCommandsIndex - 1].output = cStream->tokenArray[tokenIterator + 1].wordString;
+				
 				//move the array elements to the left 2 to remove the greater_than sign and its argument
 				for(temp = 0; temp < 2; temp++)
 				{
@@ -375,6 +388,9 @@ void create_command_array(command_stream_t cStream)
 				cStream->arrayCommands[cStream->arrayCommandsIndex].type = SEQUENCE_COMMAND;
 				cStream->arrayCommandsIndex++;
 				break;
+			case NEWLINE:
+				cStream->arrayCommands[cStream->arrayCommandsIndex].type = SPACER;
+				cStream->arrayCommandsIndex++;
 			case LEFT_PAREN:
 				break;
 			default: 
@@ -384,14 +400,32 @@ void create_command_array(command_stream_t cStream)
 	}
 }
 
-void parse_andor(command_stream_t cStream)
+void parse_spacers(command_stream_t cStream)
 {
+	int spacerIterator = 1;
+	int deletionIterator;
+	while(spacerIterator != cStream->arrayCommandsIndex)
+	{
+		if(cStream->arrayCommands[spacerIterator].type == SPACER)
+		{	
+			//shift all left command
+			for(deletionIterator = spacerIterator; deletionIterator != cStream->arrayCommandsIndex - 1; deletionIterator++)
+				cStream->arrayCommands[deletionIterator] = cStream->arrayCommands[deletionIterator + 1];
 	
+			spacerIterator--;
+			cStream->arrayCommandsIndex--;
+		}
+		spacerIterator++;
+	}
+}
+
+void parse_serialcommand(command_stream_t cStream)
+{
 	int commandIterator;
 	int deletionIterator;
 	for(commandIterator = 0; commandIterator != cStream->arrayCommandsIndex; commandIterator++)
 	{
-		if((cStream->arrayCommands[commandIterator].type == AND_COMMAND || cStream->arrayCommands[commandIterator].type == OR_COMMAND))
+		if(cStream->arrayCommands[commandIterator].type == SEQUENCE_COMMAND /*|| cStream->arrayCommands[commandIterator].type == OR_COMMAND*/)
 		{
 			//put them into a new home so they are not overwritten
 			cStream->newHome[cStream->newHomeIterator] = cStream->arrayCommands[commandIterator - 1];
@@ -419,8 +453,42 @@ void parse_andor(command_stream_t cStream)
 			commandIterator--;	
 		}
 	}
-	
-	
+}
+
+void parse_andor(command_stream_t cStream)
+{
+	int commandIterator;
+	int deletionIterator;
+	for(commandIterator = 0; commandIterator != cStream->arrayCommandsIndex; commandIterator++)
+	{
+		if(cStream->arrayCommands[commandIterator].type == AND_COMMAND || cStream->arrayCommands[commandIterator].type == OR_COMMAND)
+		{
+			//put them into a new home so they are not overwritten
+			cStream->newHome[cStream->newHomeIterator] = cStream->arrayCommands[commandIterator - 1];
+			cStream->newHomeIterator++;
+			cStream->newHome[cStream->newHomeIterator] = cStream->arrayCommands[commandIterator + 1];
+			cStream->newHomeIterator++;			
+
+			//set the command array to the previous and next command; thus creating the node
+			cStream->arrayCommands[commandIterator].u.command[0] = &cStream->newHome[cStream->newHomeIterator - 2];
+			cStream->arrayCommands[commandIterator].u.command[1] = &cStream->newHome[cStream->newHomeIterator - 1];
+			
+			//delete the now useless nodes
+			
+			//first the node before the pipe
+			for(deletionIterator = commandIterator - 1; deletionIterator < cStream->arrayCommandsIndex - 1; deletionIterator++)
+				cStream->arrayCommands[deletionIterator] = cStream->arrayCommands[deletionIterator + 1];
+			//remove the last redundant element
+			cStream->arrayCommandsIndex--;
+			//delete the now redundant command after pipe
+			for(deletionIterator = commandIterator; deletionIterator < cStream->arrayCommandsIndex - 1; deletionIterator++)
+				cStream->arrayCommands[deletionIterator] = cStream->arrayCommands[deletionIterator + 1];
+			//remove the last redundant element again
+			cStream->arrayCommandsIndex--;
+		
+			commandIterator--;	
+		}
+	}
 }
 
 

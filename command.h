@@ -19,6 +19,10 @@ enum token_type get_current_token_type(command_stream_t);
 void read_next_token(command_stream_t, char);
 
 void parse_into_linear_array(command_stream_t, command_t);
+ 
+void parse_serialcommand(command_stream_t);
+
+void parse_spacers(command_stream_t);
 
 command_t buildTree(command_stream_t, token_t, int);
 

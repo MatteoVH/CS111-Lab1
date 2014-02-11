@@ -8,6 +8,7 @@ enum command_type
 	PIPE_COMMAND,        // A | B - pipes the output of A into the input of B
 	SIMPLE_COMMAND,      // a simple command - just a regular command (i.e. ls)
 	SUBSHELL_COMMAND,    // ( A ) - a child shell is spawned to handle these commands
+	SPACER		     // for NEWLINES
 };
 
 enum token_type
@@ -21,6 +22,7 @@ enum token_type
         LESS_THAN,
         GREATER_THAN,
         SEMICOLON,
+	NEWLINE,
         END
 };
 
