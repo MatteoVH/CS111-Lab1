@@ -13,6 +13,7 @@ enum command_type
 
 enum token_type
 {
+	BEGIN,
 	AND,
         OR,
         WORD,
@@ -61,12 +62,13 @@ struct command_stream
         token_t tokenArray;
         int tokenCount;
         int maxTokens;
+
         int maxCommands;
 	int iterator;
 
         int dontGet; //if set to 1 causes get_next_char to not read the next character immediately
  // Line count
-        int line_number;
+        int lineNumber;
 
         command_t arrayCommands;
 	int arrayCommandsIndex;
@@ -86,4 +88,7 @@ struct token  //Need a token because words can have a value
         enum token_type tType;
 // Data associated with a command.
         char* wordString;
+	//for error checking purposes
+	int lineFound;
+	int isParenRead;
 };

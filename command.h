@@ -12,11 +12,11 @@ void parse_pipe(command_stream_t);
 
 void parse_redirection(command_stream_t);
 
-void parse_token(command_stream_t);
-
 enum token_type get_current_token_type(command_stream_t);
 
 void read_next_token(command_stream_t, char);
+
+void error_check_syntax(command_stream_t);
 
 void parse_into_linear_array(command_stream_t, command_t);
  

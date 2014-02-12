@@ -37,15 +37,15 @@ command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_n
  
 	cStream->tokenIndex = 0;
 	
-
-
- // -2 if no char exists, initialized as such 
-	cStream->line_number = 1;
+	cStream->lineNumber = 1;
 
 	do {
 	read_next_token(cStream, cStream->curCh);
 	}
 	while(get_current_token_type(cStream) != END); //insert all tokens into array
+
+	//make sure that all syntax is correct. Return error if it isn't.
+	error_check_syntax(cStream);
 	
 	cStream->arrayCommands = checked_malloc(sizeof(struct command)*(cStream->tokenCount));
 	cStream->arrayCommandsIndex = 0;
@@ -118,11 +118,22 @@ char get_next_char(command_stream_t cStream)
 
 void read_next_token(command_stream_t cStream, char curChar)
 {
+	
  // A while loop that determines the token type the next time produce_token is called
 	token_t curToken = checked_malloc(sizeof(struct token)); //initialize a temporary token
 	int maxTokenStringLength = 15;
 	curToken->wordString = checked_malloc(sizeof(char)*maxTokenStringLength); //initialize c-string
+	curToken->isParenRead = 0;
 	
+	//add the BEGIN token at the start
+	if(cStream->tokenCount == 0)
+	{
+		curToken->tType = BEGIN;
+		cStream->tokenArray[cStream->tokenCount] = *curToken;
+		cStream->tokenCount++;
+		return;
+	}
+
 	curToken->tType = END;
 	if(cStream->dontGet == 0)
 		curChar = get_next_char(cStream);
@@ -153,7 +164,7 @@ void read_next_token(command_stream_t cStream, char curChar)
 			curChar = get_next_char(cStream);
 			if(curChar != '&')
 			{
-				error(1, 0, "%d: Found lone &, invalid character", cStream->line_number);
+				error(1, 0, "line %d: Found lone &, invalid character", cStream->lineNumber);
 				break;
 			}
 			
@@ -163,6 +174,7 @@ void read_next_token(command_stream_t cStream, char curChar)
      //Add the end zero byte
 			curToken->wordString[index] = '\0';     
 			curToken->tType = AND;
+			curToken->lineFound = cStream->lineNumber;
 			break;
    		}
 
@@ -187,6 +199,7 @@ void read_next_token(command_stream_t cStream, char curChar)
      			cStream->dontGet = 1;     
      			curToken->wordString[index] = '\0';     
      			curToken->tType = PIPE;
+			curToken->lineFound = cStream->lineNumber;
      			break;
    		}
 	
@@ -197,6 +210,7 @@ void read_next_token(command_stream_t cStream, char curChar)
 			index++;
      			curToken->wordString[index] = '\0';     
      			curToken->tType = LEFT_PAREN;
+			curToken->lineFound = cStream->lineNumber;
      			break;
    		}
 		
@@ -207,6 +221,7 @@ void read_next_token(command_stream_t cStream, char curChar)
      			index++; 
 			curToken->wordString[index] = '\0';
      			curToken->tType = RIGHT_PAREN;
+			curToken->lineFound = cStream->lineNumber;
      			break;
    		}
 
@@ -216,6 +231,7 @@ void read_next_token(command_stream_t cStream, char curChar)
      			index++; 
 			curToken->wordString[index] = '\0';
      			curToken->tType = LESS_THAN;
+			curToken->lineFound = cStream->lineNumber;
      			break;
    		}
 
@@ -225,6 +241,7 @@ void read_next_token(command_stream_t cStream, char curChar)
      			index++; 
 			curToken->wordString[index] = '\0';
      			curToken->tType = GREATER_THAN;
+			curToken->lineFound = cStream->lineNumber;
      			break;
    		}
     
@@ -234,18 +251,19 @@ void read_next_token(command_stream_t cStream, char curChar)
      			index++; 
 			curToken->wordString[index] = '\0';
      			curToken->tType = SEMICOLON;
+			curToken->lineFound = cStream->lineNumber;
      			break;
    		}
 
    		else if(curChar == '\n')
    		{
-    			cStream->line_number++;
+    			cStream->lineNumber++;
      			curChar = get_next_char(cStream);
      // Ignore any subsequent whitespace, but keep line count
      			while(curChar == '\n' || curChar == '\t' || curChar == ' ')
      			{
 				if(curChar == '\n')
-       					cStream->line_number++;
+       					cStream->lineNumber++;
 				curChar = get_next_char(cStream);
      			}
        
@@ -262,6 +280,7 @@ void read_next_token(command_stream_t cStream, char curChar)
 				index++;
      				curToken->wordString[index] = '\0';     
      				curToken->tType = NEWLINE;
+				curToken->lineFound = cStream->lineNumber;
      			}	
 			else continue;
 			break;
@@ -294,13 +313,14 @@ void read_next_token(command_stream_t cStream, char curChar)
 				
 				curToken->wordString[index] = '\0';     
 				curToken->tType = WORD;
+				curToken->lineFound = cStream->lineNumber;
 				break;
 		}
    
    		else
    		{
-     			error(1, 0, "%d: Invalid character", 
-           		cStream->line_number);
+     			error(1, 0, "line %d: Invalid character", 
+           		cStream->lineNumber);
      			break;
    		}
 	}
@@ -315,6 +335,74 @@ void read_next_token(command_stream_t cStream, char curChar)
 
 	cStream->curCh = curChar;
 
+}
+
+void error_check_syntax(command_stream_t cStream)
+{
+	//run through all tokens
+	int tokenIterator = 0;
+	int temp;
+	while(cStream->tokenArray[tokenIterator].tType != END)
+	{
+		switch(cStream->tokenArray[tokenIterator].tType)
+		{
+			case RIGHT_PAREN:
+				if(cStream->tokenArray[tokenIterator - 1].tType != WORD)
+					error(1, 0, "line %d: Expected a command before ')'.", cStream->tokenArray[tokenIterator].lineFound);
+				temp = tokenIterator;
+				while(cStream->tokenArray[temp].tType != BEGIN)
+				{
+					if(cStream->tokenArray[temp].tType == LEFT_PAREN && cStream->tokenArray[temp].isParenRead == 0)
+					{	
+						cStream->tokenArray[temp].isParenRead = 1;
+						break;
+					}
+					temp--;
+				}	
+					if(cStream->tokenArray[temp].tType == BEGIN)
+						error(1, 0, "line %d: Did not find matching left parenthesis.", cStream->tokenArray[tokenIterator].lineFound);
+				break;
+			case LEFT_PAREN:
+				if(cStream->tokenArray[tokenIterator + 1].tType != WORD)
+					error(1, 0, "line %d: Expected a command after '('.", cStream->tokenArray[tokenIterator].lineFound);
+				temp = tokenIterator;
+				while(cStream->tokenArray[temp].tType != END)
+				{
+					if(cStream->tokenArray[temp].tType == RIGHT_PAREN && cStream->tokenArray[temp].isParenRead == 0)
+					{	
+						cStream->tokenArray[temp].isParenRead = 1;
+						break;
+					}
+					temp++;
+				}	
+					if(cStream->tokenArray[temp].tType == END)
+						error(1, 0, "line %d: Did not find matching right parenthesis.", cStream->tokenArray[tokenIterator].lineFound);		
+				break;	
+			case PIPE:
+			case AND:
+			case OR:
+				if(cStream->tokenArray[tokenIterator + 1].tType != WORD && cStream->tokenArray[tokenIterator + 1].tType != LEFT_PAREN)
+					error(1, 0, "line %d: Binary operator not followed by a valid command.", cStream->tokenArray[tokenIterator].lineFound);
+			case SEMICOLON:
+		
+				if(cStream->tokenArray[tokenIterator - 1].tType != WORD && cStream->tokenArray[tokenIterator - 1].tType != RIGHT_PAREN)
+					error(1, 0, "line %d: Binary operator not preceded by a valid command.", cStream->tokenArray[tokenIterator].lineFound);
+				break;					
+			case GREATER_THAN:
+				if(cStream->tokenArray[tokenIterator + 2].tType == LESS_THAN)
+					error(1, 0, "line %d: Cannot have input redirection directly following output redirection.", cStream->tokenArray[tokenIterator].lineFound);
+					
+			case LESS_THAN:
+				if(cStream->tokenArray[tokenIterator - 1].tType != WORD && cStream->tokenArray[tokenIterator - 1].tType != RIGHT_PAREN)
+					error(1, 0, "line %d: Redirection not preceded by a valid command.", cStream->tokenArray[tokenIterator].lineFound);
+				if(cStream->tokenArray[tokenIterator + 1].tType != WORD)
+					error(1, 0, "line %d: Redirection not followed by a valid command.", cStream->tokenArray[tokenIterator].lineFound);
+				break;
+			default: 
+				break;
+		}
+		tokenIterator++;
+	}
 }
 
 void create_command_array(command_stream_t cStream)
@@ -356,6 +444,10 @@ void create_command_array(command_stream_t cStream)
 				cStream->arrayCommandsIndex++;
 				break;
 			case LESS_THAN:
+				//check for input overload
+				if(cStream->arrayCommands[cStream->arrayCommandsIndex - 1].input != NULL)
+					error(1, 0, "line %d: Input redirection overloaded.", cStream->tokenArray[tokenIterator].lineFound);
+
 				//set the input of the previous command
 				cStream->arrayCommands[cStream->arrayCommandsIndex - 1].input = cStream->tokenArray[tokenIterator + 1].wordString;
 				
@@ -371,6 +463,10 @@ void create_command_array(command_stream_t cStream)
 				tokenIterator--;
 				break;
 			case GREATER_THAN:
+				//check for output overload
+				if(cStream->arrayCommands[cStream->arrayCommandsIndex - 1].output != NULL)
+					error(1, 0, "line %d: Output redirection overloaded.", cStream->tokenArray[tokenIterator].lineFound);
+				
 				//set the output of the previous command
 				cStream->arrayCommands[cStream->arrayCommandsIndex - 1].output = cStream->tokenArray[tokenIterator + 1].wordString;
 				
@@ -386,12 +482,15 @@ void create_command_array(command_stream_t cStream)
 				tokenIterator--;
 				break;
 			case SEMICOLON:
+				if(cStream->tokenArray[tokenIterator + 1].tType == NEWLINE || cStream->tokenArray[tokenIterator + 1].tType == END)
+					break;
 				cStream->arrayCommands[cStream->arrayCommandsIndex].type = SEQUENCE_COMMAND;
 				cStream->arrayCommandsIndex++;
 				break;
 			case NEWLINE:
 				cStream->arrayCommands[cStream->arrayCommandsIndex].type = SPACER;
 				cStream->arrayCommandsIndex++;
+				break;
 			case LEFT_PAREN:
 				break;
 			default: 
@@ -403,7 +502,7 @@ void create_command_array(command_stream_t cStream)
 
 void parse_spacers(command_stream_t cStream)
 {
-	int spacerIterator = 1;
+	int spacerIterator = 0;
 	int deletionIterator;
 	while(spacerIterator != cStream->arrayCommandsIndex)
 	{
