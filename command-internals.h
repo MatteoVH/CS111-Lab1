@@ -76,9 +76,6 @@ struct command_stream
 	command_t newHome;
 	int newHomeIterator;
 
-	command_t linearCommandArray;
-	int linearCounter;
-	
 	//this int is to keep track of what command the read_command_stream function is at
 	int outputCounter;
 }; 

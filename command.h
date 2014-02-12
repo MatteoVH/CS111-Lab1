@@ -18,8 +18,6 @@ void read_next_token(command_stream_t, char);
 
 void error_check_syntax(command_stream_t);
 
-void parse_into_linear_array(command_stream_t, command_t);
- 
 void parse_serialcommand(command_stream_t);
 
 void parse_spacers(command_stream_t);

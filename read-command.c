@@ -77,13 +77,6 @@ command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_n
 	//parse NEWLINE spacers
 	parse_spacers(cStream);
 		
-	//Initialize the linear command array with memory and also set the counter to 0
-	cStream->linearCommandArray = checked_malloc(sizeof(struct command)*(cStream->arrayCommandsIndex));
-	cStream->linearCounter = 0;
-
-	//Parse the tree using a recursive in-order traversal to generate a linear array of the commands so we can return them in read_command_stream
-	parse_into_linear_array(cStream, &(cStream->arrayCommands[0]));	
-
 	//initialize the output counter so that the read_command_stream function can use it
 	cStream->outputCounter = 0;
 	
@@ -492,6 +485,7 @@ void create_command_array(command_stream_t cStream)
 				cStream->arrayCommandsIndex++;
 				break;
 			case LEFT_PAREN:
+				cStream->arrayCommands[cStream->arrayCommandsIndex].type = 
 				break;
 			default: 
 				break;
@@ -628,21 +622,6 @@ void parse_pipe(command_stream_t cStream)
 	}
 }
 
-
-void parse_into_linear_array(command_stream_t cStream, command_t com)
-{
-	//traverse the left side of the current node
-	if(com->u.command[0] != NULL && com->type != SUBSHELL_COMMAND && com->type != SIMPLE_COMMAND)
-		parse_into_linear_array(cStream, &(*(com->u.command[0])));
-
-	//insert current command and increment counter
-	cStream->linearCommandArray[cStream->linearCounter] = *com;
-	cStream->linearCounter++;
-	
-	//traverse the right side of the current node
-	if(com->u.command[1] != NULL && com->type != SUBSHELL_COMMAND && com->type != SIMPLE_COMMAND)
-		parse_into_linear_array(cStream, &(*(com->u.command[1])));
-}
 
 command_t read_command_stream (command_stream_t s)
 {
