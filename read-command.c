@@ -512,7 +512,10 @@ void create_command_array(command_stream_t cStream, int begin, int end)
 
 				while(diff != 0)
 				{
-					cStream->arrayCommands[indexNow - 1].u.subshell_command[diff - 1] = cStream->arrayCommands[cStream->arrayCommandsIndex - 1];
+					cStream->newHome[cStream->newHomeIterator] = cStream->arrayCommands[cStream->arrayCommandsIndex - 1]; 	
+					
+					cStream->arrayCommands[indexNow - 1].u.subshell_command[diff - 1] = cStream->newHome[cStream->newHomeIterator];
+					cStream->newHomeIterator++;
 					cStream->arrayCommandsIndex--;
 					diff--;
 				}
