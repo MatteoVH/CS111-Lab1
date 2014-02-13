@@ -3,6 +3,9 @@
 typedef struct command_stream *command_stream_t;
 typedef struct command *command_t;
 typedef struct token *token_t;
+typedef struct word_node* word_node_t;
+typedef struct dep_node* dep_node_t;
+typedef struct parent_node* parent_node_t;
 
 void create_command_array(command_stream_t, int, int);
 
@@ -37,7 +40,9 @@ void print_command (command_t);
 
 /* Execute a command.  Use "time travel" if the integer flag is
    nonzero.  */
-void execute_command (command_t, int);
+void execute_command (command_t);
+
+command_t exec_time_travel (command_stream_t);
 
 /* Return the exit status of a command, which must have previously been executed.
    Wait for the command, if it is not already finished.  */

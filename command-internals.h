@@ -1,9 +1,7 @@
-// UCLA CS 111 Lab 1 command internals
-
 enum command_type
 {
-	AND_COMMAND,         // A && B - B only runs if A exists and returns zero (true)
-	SEQUENCE_COMMAND,    // A ; B - Runs B serially after A
+	AND_COMMAND,
+	SEQUENCE_COMMAND,
 	OR_COMMAND,          // A || B - B only runs if A exists with nonzero (false)
 	PIPE_COMMAND,        // A | B - pipes the output of A into the input of B
 	SIMPLE_COMMAND,      // a simple command - just a regular command (i.e. ls)
@@ -32,10 +30,10 @@ struct command
 
   enum command_type type;
 
-  // Exit status, or -1 if not known (e.g., because it has not exited yet).
+  // Exit status
   int status;
 
-  // I/O redirections, or 0 if none.
+  // I/O redirections. If none, value is 0.
   char *input;
   char *output;
 
@@ -88,4 +86,33 @@ struct token  //Need a token because words can have a value
 	//for error checking purposes
 	int lineFound;
 	int isParenRead;
+};
+
+struct word_node
+{
+  char* word;
+  struct word_node* next;
+};
+
+struct dep_node
+{
+  struct parent_node* dependent;
+  
+  struct dep_node* next;
+
+};
+
+//Nodes describing parent commands and their dependencies
+struct parent_node
+{
+  struct command* command;
+
+  struct word_node* inputs;
+  struct word_node* outputs;
+  int dep_counter;
+  struct dep_node* dependencies;
+  
+  int pid;
+  
+  struct parent_node* next;
 };
