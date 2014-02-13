@@ -500,7 +500,7 @@ void create_command_array(command_stream_t cStream, int begin, int end)
 				{
 					if(cStream->tokenArray[x].tType == RIGHT_PAREN && cStream->tokenArray[x].isParenRead == 0)
 					{
-						cStream->tokenArray[x].isParenRead == 1;
+						cStream->tokenArray[x].isParenRead = 1;
 						break;
 					}
 				}
@@ -516,7 +516,7 @@ void create_command_array(command_stream_t cStream, int begin, int end)
 					cStream->arrayCommandsIndex--;
 					diff--;
 				}
-				
+				tokenIterator = x;	
 
 				break;
 			default: 
