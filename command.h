@@ -4,13 +4,11 @@ typedef struct command_stream *command_stream_t;
 typedef struct command *command_t;
 typedef struct token *token_t;
 
-void create_command_array(command_stream_t);
+void create_command_array(command_stream_t, int, int);
 
-void parse_andor(command_stream_t);
+void parse_andor(command_stream_t, int, int);
 
-void parse_pipe(command_stream_t);
-
-void parse_redirection(command_stream_t);
+void parse_pipe(command_stream_t, int, int);
 
 enum token_type get_current_token_type(command_stream_t);
 
@@ -18,9 +16,9 @@ void read_next_token(command_stream_t, char);
 
 void error_check_syntax(command_stream_t);
 
-void parse_serialcommand(command_stream_t);
+void parse_serialcommand(command_stream_t, int, int);
 
-void parse_spacers(command_stream_t);
+void parse_spacers(command_stream_t, int, int);
 
 command_t buildTree(command_stream_t, token_t, int);
 
