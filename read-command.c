@@ -262,7 +262,7 @@ void read_next_token(command_stream_t cStream, char curChar)
      			}
      			cStream->dontGet = 1;
      			if(cStream->tokenArray[cStream->tokenCount - 1].tType != AND && cStream->tokenArray[cStream->tokenCount - 1].tType != OR &&
-			   cStream->tokenArray[cStream->tokenCount - 1].tType != PIPE && cStream->tokenArray[cStream->tokenCount -1].tType != SEMICOLON)
+			   cStream->tokenArray[cStream->tokenCount - 1].tType != PIPE && cStream->tokenArray[cStream->tokenCount - 1].tType != SEMICOLON)
 			{	
      				curToken->wordString[index] = '\n';
 				index++;
@@ -514,7 +514,7 @@ void create_command_array(command_stream_t cStream, int begin, int end)
 				{
 					cStream->newHome[cStream->newHomeIterator] = cStream->arrayCommands[cStream->arrayCommandsIndex - 1]; 	
 					
-					cStream->arrayCommands[indexNow - 1].u.subshell_command[diff - 1] = cStream->newHome[cStream->newHomeIterator];
+					cStream->arrayCommands[indexNow - 1].u.subshell_command = &cStream->newHome[cStream->newHomeIterator];
 					cStream->newHomeIterator++;
 					cStream->arrayCommandsIndex--;
 					diff--;
