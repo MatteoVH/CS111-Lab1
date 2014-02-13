@@ -324,3 +324,32 @@ while(curr_node != NULL)
 
     curr_output2 = curr_output2->next;
   }
+ 
+      last_node = curr_node;
+      curr_node = curr_node->next;
+}
+
+    // Add node to waiting list
+    if( last_node == NULL)
+      list_head = new_node;
+    else
+      last_node->next = new_node;
+
+    final_command = command;
+  }
+
+
+  return final_command;
+}
+
+
+void
+execute_command (command_t c)
+{
+  /* FIXME: Replace this with your implementation. You may need to
+add auxiliary functions and otherwise modify the source code.
+You can also use external functions defined in the GNU C Library. */
+
+ //normal mode
+normal_exec_cmd(c);	
+}
