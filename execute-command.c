@@ -98,7 +98,7 @@ int normal_exec_cmd (command_t c){
 		pid_t p;
 		p=fork();	
 		if(p==0){
-			if(c->input!=0){ //input is not NULL and therfore exists
+			if(c->input!=0){ //input is not NULL and therefore exists
 				int inputFD = open(c->input,O_RDONLY);
 				if(inputFD==-1){
 					perror("Unable to open input file");
@@ -152,7 +152,7 @@ int normal_exec_cmd (command_t c){
 }
 
 
-//Time travel functions
+//Time travel 
 ////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -179,7 +179,7 @@ word_node_t generate_word_list(char* word)
 	return head;
 }
 
-// Recursively generate all dependencies of the command to the node, and furthermore recursively
+// Using recursion generate all dependencies of the command to the node, and furthermore recursively
 // add all dependencies of the command's subcommands to the node
 void generate_cmd_dependencies(parent_node_t node, command_t cmd)
 {
@@ -234,22 +234,22 @@ switch(cmd->type)
 	}
 }
 
-void add_to_list(parent_node_t arg_dependent, parent_node_t new_parent)
+void list_add(parent_node_t arg_dependent, parent_node_t new_parent)
 {
 	dep_node_t dep_list = arg_dependent->dependencies;
-  	dep_node_t last_node = dep_list;
+  	dep_node_t final_node = arg_dependent->dependencies;
   	while(dep_list != NULL)
   	{
-    		last_node = dep_list;
+    		final_node = dep_list;
     		dep_list = dep_list->next;
   	}
   	dep_node_t new_node = checked_malloc(sizeof(struct dep_node));
  	 new_node->dependent = new_parent;
  	 new_node->next = NULL;
-	if(last_node == NULL)
+	if(final_node == NULL)
 		arg_dependent->dependencies = new_node;
 	else
-		last_node->next = new_node;
+		final_node->next = new_node;
 }
 
 
@@ -263,16 +263,16 @@ command_t exec_time_travel (command_stream_t s)
   {
     parent_node_t new_node = checked_malloc(sizeof(struct parent_node));
     new_node->command = command;
+    new_node->pid = -1;
+    new_node->dependencies = NULL;
+    new_node->dep_counter = 0;
     new_node->inputs = NULL;
     new_node->outputs = NULL;
-    new_node->dep_counter = 0;
-    new_node->dependencies = NULL;
-    new_node->pid = -1;
 
     generate_cmd_dependencies(new_node, command); 
 
     
-    parent_node_t last_node = list_head;
+    parent_node_t final_node = list_head;
     parent_node_t curr_node = list_head;
 while(curr_node != NULL)
 {
@@ -289,7 +289,7 @@ while(curr_node != NULL)
       {
           //Dependency exists
           new_node->dep_counter += 1;
-          add_to_list( curr_node, new_node);
+          list_add( curr_node, new_node);
 	  finish++;
 	  break;
       }
@@ -313,7 +313,7 @@ while(curr_node != NULL)
       {
           //dependent
 	  new_node->dep_counter += 1;
-          add_to_list(curr_node, new_node);
+          list_add(curr_node, new_node);
 	  end++;
           break;
       }
@@ -325,19 +325,78 @@ while(curr_node != NULL)
     curr_output2 = curr_output2->next;
   }
  
-      last_node = curr_node;
+      final_node = curr_node;
       curr_node = curr_node->next;
 }
 
     // Add node to waiting list
-    if( last_node == NULL)
+    if( final_node == NULL)
       list_head = new_node;
     else
-      last_node->next = new_node;
+      final_node->next = new_node;
 
     final_command = command;
   }
 
+  while(list_head != NULL)
+  {
+    parent_node_t curr_node = list_head;
+    while(curr_node != NULL)
+    {
+      // If current node isn't waiting
+      if(curr_node->dep_counter == 0 && curr_node->pid < 1)
+      {
+        //fork and execute
+        int pid = fork();
+        if(pid == -1)
+		error(1, 0, "Cannot create child process");
+	else if( pid == 0)
+        {
+		execute_command(curr_node->command);
+		_exit(curr_node->command->status);
+        }
+	else if(pid > 0)
+        {
+		curr_node->pid = pid;
+        }
+      }
+        
+      curr_node = curr_node->next;
+    }
+    
+    int wait;
+    //Waiting
+    pid_t completed_pid = waitpid(-1, &wait, 0);
+    
+    //Removal
+    parent_node_t prev_node = NULL;
+    parent_node_t completed_node = list_head;
+    while(completed_node != NULL)
+    {
+      if(completed_node->pid == completed_pid)
+      {
+        dep_node_t curr_depend = completed_node->dependencies;
+        // for all on the list of dependents
+        while(curr_depend != NULL)
+        {
+          parent_node_t freed_node = curr_depend->dependent;
+          //erase dependency
+          freed_node->dep_counter--;
+          curr_depend = curr_depend->next;
+        }
+        //remove from the list  
+        if(prev_node == NULL)
+          list_head = completed_node->next;
+        else
+          prev_node->next = completed_node->next;
+        break;
+      }
+      
+      prev_node = completed_node;
+      completed_node = completed_node->next;
+    }
+    
+  }
 
   return final_command;
 }
