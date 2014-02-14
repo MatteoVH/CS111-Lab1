@@ -7,7 +7,7 @@ typedef struct word_node* word_node_t;
 typedef struct dep_node* dep_node_t;
 typedef struct parent_node* parent_node_t;
 
-void create_command_array(command_stream_t, int, int);
+void create_command_array(command_stream_t, int, int, int);
 
 void parse_andor(command_stream_t, int, int);
 
