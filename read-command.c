@@ -501,15 +501,19 @@ void create_command_array(command_stream_t cStream, int begin, int end)
 
 				//find position of last parenthesis
 				int x;
-				for(x = end; x != tokenIterator; x--)
+				int subsubshell = 1;
+				for(x = tokenIterator; x != end; x++)
 				{
-					if(cStream->tokenArray[x].tType == RIGHT_PAREN && cStream->tokenArray[x].isParenRead == 0)
+					if(cStream->tokenArray[x].tType == RIGHT_PAREN)
 					{
-						cStream->tokenArray[x].isParenRead = 1;
-						break;
+						subsubshell--;
+						if(subsubshell == 0)
+							break;
 					}
+					else if(cStream->tokenArray[x].tType == LEFT_PAREN)
+						subsubshell++;
 				}
-
+				
 				create_command_array(cStream, tokenIterator, x);
 				int diff = cStream->arrayCommandsIndex - indexNow;
 				
