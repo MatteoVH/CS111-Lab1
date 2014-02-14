@@ -69,7 +69,7 @@ command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_n
 	cStream->newHome = checked_malloc(sizeof(struct command)*(cStream->tokenCount)*2);
 	
 	//puts the tokens into actual command structs, and also parses redirections as well
-	create_command_array(cStream, 0, cStream->tokenCount);
+	create_command_array(cStream, 0, cStream->tokenCount, 0);
 
 		
 	//initialize the output counter so that the read_command_stream function can use it
@@ -394,7 +394,7 @@ void error_check_syntax(command_stream_t cStream)
 	 
 }
 
-void create_command_array(command_stream_t cStream, int begin, int end)
+void create_command_array(command_stream_t cStream, int begin, int end, int subShellMode)
 {
 	int nextBegin = cStream->arrayCommandsIndex;
 	int tokenIterator = begin;
@@ -483,6 +483,12 @@ void create_command_array(command_stream_t cStream, int begin, int end)
 				tokenIterator--;
 				break;
 			case SEMICOLON:
+				if(subShellMode == 0)
+				{
+					cStream->arrayCommands[cStream->arrayCommandsIndex].type = SPACER;
+					cStream->arrayCommandsIndex++;
+					break;	
+				}
 				if(cStream->tokenArray[tokenIterator + 1].tType == NEWLINE || cStream->tokenArray[tokenIterator + 1].tType == END)
 					break;
 				cStream->arrayCommands[cStream->arrayCommandsIndex].type = SEQUENCE_COMMAND;
@@ -514,7 +520,7 @@ void create_command_array(command_stream_t cStream, int begin, int end)
 						subsubshell++;
 				}
 				
-				create_command_array(cStream, tokenIterator, x);
+				create_command_array(cStream, tokenIterator, x, 1);
 				int diff = cStream->arrayCommandsIndex - indexNow;
 				
 				cStream->arrayCommands[indexNow - 1].u.subshell_command = checked_malloc(sizeof(struct command)*diff);

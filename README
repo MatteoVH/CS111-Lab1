@@ -1,2 +1,19 @@
 Matteo Vesprini-Heidrich -304205341
 Lloyd Xie - 704054156
+
+There are few limitations to our implementation. 
+
+Lab 1C
+-----------------------------------------------
+-Does not create dependencies among subcommands of a head command. Subcommands are executed sequentially.
+
+Lab 1B
+-----------------------------------------------
+-No limitations.
+
+Lab 1A
+-----------------------------------------------
+
+-No limitations.
+
+

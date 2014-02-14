@@ -193,7 +193,7 @@ void generate_cmd_dependencies(parent_node_t node, command_t cmd)
 
 	if(cmd->output != 0)
 	{
-		if(node->outputs == NULL)
+	if(node->outputs == NULL)
 			node->outputs = generate_word_list(cmd->output);
 		else
 			generate_word_dependencies(node->outputs, cmd->output);
@@ -337,7 +337,7 @@ while(curr_node != NULL)
 
     final_command = command;
   }
-
+//execution process
   while(list_head != NULL)
   {
     parent_node_t curr_node = list_head;
