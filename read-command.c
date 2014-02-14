@@ -417,21 +417,26 @@ void create_command_array(command_stream_t cStream, int begin, int end)
 				break;
 			case WORD:
 				cStream->arrayCommands[cStream->arrayCommandsIndex].type = SIMPLE_COMMAND;
-				int numOfOptions = 15;
-				cStream->arrayCommands[cStream->arrayCommandsIndex].u.word = checked_malloc(sizeof(char*)*numOfOptions);
+				//count number of words to put in array
+				int wordCount = 0;
+				int wordIterator = tokenIterator;
+				while(cStream->tokenArray[wordIterator].tType == WORD && wordIterator != end)
+				{	
+					wordCount++;		
+					wordIterator++;
+				}
+			
+				cStream->arrayCommands[cStream->arrayCommandsIndex].u.word = checked_malloc(sizeof(char*)*(wordCount+1));
 				int optionIterator = 0;
 				
-				while(cStream->tokenArray[tokenIterator].tType == WORD)	
+				while(wordCount != 0)	
 				{
 					cStream->arrayCommands[cStream->arrayCommandsIndex].u.word[optionIterator] = cStream->tokenArray[tokenIterator].wordString;
 					optionIterator++;
 					tokenIterator++;
-					if(optionIterator == numOfOptions)
-					{
-						numOfOptions += 30;
-						cStream->arrayCommands[cStream->arrayCommandsIndex].u.word = checked_realloc(cStream->arrayCommands[cStream->arrayCommandsIndex].u.word, sizeof(char*)*numOfOptions);					
-					}
+					wordCount--;
 				}
+				cStream->arrayCommands[cStream->arrayCommandsIndex].u.word[optionIterator] = NULL;
 				tokenIterator--;
 				cStream->arrayCommandsIndex++;
 				break;
